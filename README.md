@@ -5,7 +5,8 @@
 Identify business decision frictions and then design workflows around the proper pattern.
 
 ### Principle #2: Desing for enterprise productivity (not just individual task augmentation)
-Use Agentic systems when decision and automation are needed 
+Use Agentic systems when decision and automation with adaptability are needed
+(Exploring different trajectories for the solution)
 
 ## Patterns Development
 ### Principle #3: Acknowledge tradeoffs with agency, control, and reliability
