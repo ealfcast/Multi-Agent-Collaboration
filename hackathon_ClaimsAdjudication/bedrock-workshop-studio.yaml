@@ -1329,7 +1329,7 @@ Resources:
       Handler: index.lambda_handler
       MemorySize: 512
       Role: !GetAtt LambdaExecutionRole.Arn
-      Runtime: python3.9
+      Runtime: python3.13
       Timeout: 5
 
   DefaultVpcFinder:
@@ -1460,7 +1460,7 @@ Resources:
       Description: Add LifeCycle Configuration to copy NB files to Studio
       Handler: index.lambda_handler
       Role: !GetAtt LifeCycleConfigLambdaRole.Arn
-      Runtime: python3.9
+      Runtime: python3.13
       Timeout: 60
       Code:
         ZipFile: !Join
