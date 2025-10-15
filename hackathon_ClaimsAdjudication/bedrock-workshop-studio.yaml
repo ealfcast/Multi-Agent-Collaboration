@@ -1295,6 +1295,20 @@ Resources:
     Properties:
       PolicyArn: !GetAtt ExampleAutoPolicyContractPolicy.PolicyArn
       LastUpdatedDefinitionHash: !GetAtt ExampleAutoPolicyContractPolicy.DefinitionHash
+  
+  ExampleGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      Description: "Example Guardrail"
+      Name: "ExampleGuardrail"
+      BlockedInputMessaging: "Input blocked by guardrail."
+      BlockedOutputsMessaging: "Output blocked by guardrail."
+      CrossRegionConfig: 
+        GuardrailProfileArn: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail-profile/us.guardrail.v1:0'
+      AutomatedReasoningPolicyConfig: 
+        ConfidenceThreshold: 1.0
+        Policies:
+          - !GetAtt ExampleAutoPolicyContractPolicy.PolicyArn
 
   DefaultVpcLambda:
     Type: AWS::Lambda::Function
@@ -1560,3 +1574,17 @@ Resources:
     Version: "1.0"
     Properties:
       ServiceToken: !GetAtt LifeCycleConfigLambda.Arn
+
+Outputs:
+    GuardrailId:
+      Description: The ID for the Guardrail
+      Value: !GetAtt ExampleGuardrail.GuardrailId
+    PolicyArn:
+      Description: The ID for the Auto Policy Contract
+      Value: !GetAtt ExampleAutoPolicyContractPolicy.PolicyArn
+    PolicyId:
+      Description: The ID for the Auto Policy Contract
+      Value: !GetAtt ExampleAutoPolicyContractPolicy.PolicyId
+    PolicyVersion:
+      Description: The Version for the Auto Policy Contract
+      Value: !GetAtt ExampleAutoPolicyContractPolicyVersion.Version
