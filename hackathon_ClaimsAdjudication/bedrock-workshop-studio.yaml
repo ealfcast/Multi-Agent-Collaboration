@@ -21,10 +21,10 @@ Mappings:
   RegionMap:
     us-east-1: 
       jupyter: "arn:aws:sagemaker:us-east-1:081325390199:image/jupyter-server-3"
-      instance: "ml.t3.medium"
+      instance: "ml.t3.large"
     us-west-2: 
       jupyter: "arn:aws:sagemaker:us-west-2:236514542706:image/jupyter-server-3"
-      instance: "ml.t3.medium"
+      instance: "ml.t3.large"
 
 Resources:
 

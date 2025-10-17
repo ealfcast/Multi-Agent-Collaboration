@@ -2,3 +2,5 @@ strands-agents
 strands-agents-tools
 PyYAML
 PyPDF2
+opentelemetry-sdk
+opentelemetry-exporter-otlp
