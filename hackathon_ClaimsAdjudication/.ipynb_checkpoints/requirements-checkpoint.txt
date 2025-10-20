@@ -1,0 +1,10 @@
+boto3
+botocore
+strands-agents
+strands-agents-tools
+PyYAML
+PyPDF2
+opentelemetry-sdk
+opentelemetry-exporter-otlp
+opentelemetry-instrumentation-boto
+opentelemetry-sdk-extension-aws
