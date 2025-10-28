@@ -1,7 +1,12 @@
-boto3
+boto3==1.40.50
 botocore
+bedrock-agentcore==0.1.7
+bedrock-agentcore-starter-toolkit==0.1.24
 strands-agents
+strands-agents[a2a]
 strands-agents-tools
+pyyaml
+ddgs
 PyYAML
 PyPDF2
 opentelemetry-sdk
