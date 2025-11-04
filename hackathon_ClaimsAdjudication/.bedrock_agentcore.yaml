@@ -1,4 +1,4 @@
-default_agent: aws_appraisal_assistant
+default_agent: fnol_assistant
 agents:
   aws_appraisal_assistant:
     name: aws_appraisal_assistant
@@ -7,7 +7,7 @@ agents:
     container_runtime: none
     source_path: null
     aws:
-      execution_role: arn:aws:iam::161615149547:role/AWSDocsAssistantBedrockAgentCoreRole-us-east-1
+      execution_role: arn:aws:iam::161615149547:role/AWSBlogsAssistantBedrockAgentCoreRole-us-east-1
       execution_role_auto_create: false
       account: '161615149547'
       region: us-east-1
@@ -35,11 +35,97 @@ agents:
       memory_name: aws_appraisal_assistant_mem
       event_expiry_days: 30
       first_invoke_memory_check_done: false
-      was_created_by_toolkit: true
+      was_created_by_toolkit: false
     authorizer_configuration:
       customJWTAuthorizer:
         allowedClients:
-        - 1lvtmj74pvs7oa07u3abe4cg4p
-        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_3yiuuvNmy/.well-known/openid-configuration
+        - 1gssagevr5hbqdbvasf6999n8d
+        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_jfuv4Cp36/.well-known/openid-configuration
+    request_header_configuration: null
+    oauth_configuration: null
+  settlement_assistant:
+    name: settlement_assistant
+    entrypoint: /home/sagemaker-user/Multi-Agent-Collaboration/hackathon_ClaimsAdjudication/agents/settlement-agent.py
+    platform: linux/arm64
+    container_runtime: none
+    source_path: null
+    aws:
+      execution_role: arn:aws:iam::161615149547:role/AWSDocsAssistantBedrockAgentCoreRole-us-east-1
+      execution_role_auto_create: false
+      account: '161615149547'
+      region: us-east-1
+      ecr_repository: 161615149547.dkr.ecr.us-east-1.amazonaws.com/bedrock-agentcore-settlement_assistant
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: A2A
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: settlement_assistant-3t3GvOE7iu
+      agent_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:runtime/settlement_assistant-3t3GvOE7iu
+      agent_session_id: null
+    codebuild:
+      project_name: bedrock-agentcore-settlement_assistant-builder
+      execution_role: arn:aws:iam::161615149547:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-388ccdee1d
+      source_bucket: bedrock-agentcore-codebuild-sources-161615149547-us-east-1
+    memory:
+      mode: STM_ONLY
+      memory_id: settlement_assistant_mem-O5FbW18Zxl
+      memory_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:memory/settlement_assistant_mem-O5FbW18Zxl
+      memory_name: settlement_assistant_mem
+      event_expiry_days: 30
+      first_invoke_memory_check_done: false
+      was_created_by_toolkit: false
+    authorizer_configuration:
+      customJWTAuthorizer:
+        allowedClients:
+        - 2meg59a3s27qan0obh7bp5go7u
+        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_K101vl1qr/.well-known/openid-configuration
+    request_header_configuration: null
+    oauth_configuration: null
+  fnol_assistant:
+    name: fnol_assistant
+    entrypoint: /home/sagemaker-user/Multi-Agent-Collaboration/hackathon_ClaimsAdjudication/agents/fnol-agent.py
+    platform: linux/arm64
+    container_runtime: none
+    source_path: null
+    aws:
+      execution_role: arn:aws:iam::161615149547:role/AWSFNOLAssistantBedrockAgentCoreRole-us-east-1
+      execution_role_auto_create: false
+      account: '161615149547'
+      region: us-east-1
+      ecr_repository: 161615149547.dkr.ecr.us-east-1.amazonaws.com/bedrock-agentcore-fnol_assistant
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: A2A
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: fnol_assistant-MRDFkp2mkG
+      agent_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:runtime/fnol_assistant-MRDFkp2mkG
+      agent_session_id: null
+    codebuild:
+      project_name: bedrock-agentcore-fnol_assistant-builder
+      execution_role: arn:aws:iam::161615149547:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-93ed08f116
+      source_bucket: bedrock-agentcore-codebuild-sources-161615149547-us-east-1
+    memory:
+      mode: STM_ONLY
+      memory_id: fnol_assistant_mem-iRbWou4Ycz
+      memory_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:memory/fnol_assistant_mem-iRbWou4Ycz
+      memory_name: fnol_assistant_mem
+      event_expiry_days: 30
+      first_invoke_memory_check_done: false
+      was_created_by_toolkit: false
+    authorizer_configuration:
+      customJWTAuthorizer:
+        allowedClients:
+        - nott2bang2m0bmfg2s7u5a407
+        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_ZQm4mMxAq/.well-known/openid-configuration
     request_header_configuration: null
     oauth_configuration: null
