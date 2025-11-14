@@ -1,0 +1,1588 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  This is a minimal deployment creating a SageMaker Studio Domain which will default to JupyterLab spaces.
+
+Parameters:
+  UserProfileName:
+    Type: String
+    Description: The user profile name for the SageMaker workshop
+    Default: 'sagemakeruser'
+  DomainName:
+    Type: String
+    Description: The domain name of the Sagemaker studio instance
+    Default: 'amazon-bedrock-workshop-domain'
+  SpaceName:
+    Type: String
+    Description: The space name of the Sagemaker studio JupyterLab instance
+    Default: 'amazon-bedrock-workshop-space'
+
+Mappings: 
+  RegionMap:
+    us-east-1: 
+      jupyter: "arn:aws:sagemaker:us-east-1:081325390199:image/jupyter-server-3"
+      instance: "ml.t3.large"
+    us-west-2: 
+      jupyter: "arn:aws:sagemaker:us-west-2:236514542706:image/jupyter-server-3"
+      instance: "ml.t3.large"
+
+Resources:
+
+  LambdaExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Path: /
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess'
+        - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
+        - 'arn:aws:iam::aws:policy/IAMFullAccess'
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+        - 'arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess'
+
+  SageMakerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: 
+              Service: 
+                - sagemaker.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonSageMakerFullAccess'
+        - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
+        - 'arn:aws:iam::aws:policy/AWSCloudFormationFullAccess'
+        - 'arn:aws:iam::aws:policy/AWSLambda_FullAccess'
+        - 'arn:aws:iam::aws:policy/IAMFullAccess'
+        - 'arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess'
+        - 'arn:aws:iam::aws:policy/AmazonSNSFullAccess'
+      Policies: 
+        - PolicyName: s3-access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource: arn:aws:s3:::*
+        - PolicyName: iam-access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:GetRole
+                  - iam:GetRolePolicy
+                Resource: '*'
+        - PolicyName: bedrock-access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:*
+                Resource: "*"
+        - PolicyName: bedrock-deny
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Deny
+                Action:
+                  - bedrock:CreateModelCustomizationJob
+                  - bedrock:StopModelCustomizationJob
+                  - bedrock:GetModelCustomizationJob
+                  - bedrock:ListModelCustomizationJobs
+                Resource: "*"
+        - PolicyName: aoss-access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - aoss:*
+                Resource: "*"
+
+  ExampleAutoPolicyContractPolicy:
+    Type: AWS::Bedrock::AutomatedReasoningPolicy
+    Properties:
+      Name: example-auto-policy-contract
+      Description: This example policy that is used auto policy
+      PolicyDefinition:
+        Rules:
+          - AlternateExpression: if premiumPaid is true, then policyInEffect is true
+            Expression: |-
+              (=> premiumPaid
+                  policyInEffect)
+            Id: FYNO8XCLQRIK
+          - AlternateExpression: "if the following 5 statements are true: 1)
+              isAdditionalAuto is true; 2) allOtherAutosInsured is true; 3)
+              notCoveredByOtherPolicy is true; 4) notifiedWithin30Days is true; 5)
+              additionalPremiumPaid is true, then additionalAutoCoverage is true"
+            Expression: |-
+              (=> (and isAdditionalAuto
+                      allOtherAutosInsured
+                      notCoveredByOtherPolicy
+                      notifiedWithin30Days
+                      additionalPremiumPaid)
+                  additionalAutoCoverage)
+            Id: RQ2XE2RJ50SF
+          - AlternateExpression: if isAdditionalAuto is true and requestedAfter30Days is
+              true, then coverageStartsAtRequestTime is true
+            Expression: |-
+              (=> (and isAdditionalAuto
+                      requestedAfter30Days)
+                  coverageStartsAtRequestTime)
+            Id: XB5RGFVJHTOY
+          - AlternateExpression: "if the following 4 statements are true: 1) at least one of
+              the following 3 statements is true: 1a) vehicleType is equal to
+              PRIVATE_PASSENGER; 1b) vehicleType is equal to PICKUP_BODY; 1c)
+              vehicleType is equal to CARGO_VAN; 2) designedForPublicRoads is true; 3)
+              hasAtLeastFourWheels is true; 4) grossVehicleWeightRating is no more than
+              12000, then isQualifyingAuto is true"
+            Expression: |-
+              (=> (and (or (= vehicleType
+                              PRIVATE_PASSENGER)
+                          (= vehicleType
+                              PICKUP_BODY)
+                          (= vehicleType
+                              CARGO_VAN))
+                      designedForPublicRoads
+                      hasAtLeastFourWheels
+                      (<= grossVehicleWeightRating
+                          12000))
+                  isQualifyingAuto)
+            Id: M3B5TLL3HNQV
+          - AlternateExpression: "if at least one of the following 3 statements is true: 1)
+              vehicleType is equal to STEP_VAN; 2) vehicleType is equal to
+              PARCEL_DELIVERY_VAN; 3) vehicleType is equal to CARGO_CUTAWAY_VAN, then
+              isQualifyingAuto is false"
+            Expression: |-
+              (=> (or (= vehicleType STEP_VAN)
+                      (= vehicleType
+                        PARCEL_DELIVERY_VAN)
+                      (= vehicleType
+                        CARGO_CUTAWAY_VAN))
+                  (not isQualifyingAuto))
+            Id: DOU07S637NRJ
+          - AlternateExpression: "if at least one of the following 4 statements is true: 1)
+              isAutoOnDeclarationsPage is true; 2) isAdditionalAuto is true; 3)
+              isReplacementAuto is true; 4) isTrailerOwnedByInsured is true, then
+              isCoveredAuto is true"
+            Expression: |-
+              (=> (or isAutoOnDeclarationsPage
+                      isAdditionalAuto
+                      isReplacementAuto
+                      isTrailerOwnedByInsured)
+                  isCoveredAuto)
+            Id: J7OY627ET0XC
+          - AlternateExpression: "if at least one of the following 4 statements is true: 1)
+              occupyingStatus is equal to IN_VEHICLE; 2) occupyingStatus is equal to
+              ON_VEHICLE; 3) occupyingStatus is equal to ENTERING_VEHICLE; 4)
+              occupyingStatus is equal to EXITING_VEHICLE, then isOccupyingVehicle is
+              true"
+            Expression: |-
+              (=> (or (= occupyingStatus
+                        IN_VEHICLE)
+                      (= occupyingStatus
+                        ON_VEHICLE)
+                      (= occupyingStatus
+                        ENTERING_VEHICLE)
+                      (= occupyingStatus
+                        EXITING_VEHICLE))
+                  isOccupyingVehicle)
+            Id: BW6QYOLOL893
+          - AlternateExpression: if occupyingStatus is equal to NOT_OCCUPYING, then
+              isOccupyingVehicle is false
+            Expression: |-
+              (=> (= occupyingStatus
+                    NOT_OCCUPYING)
+                  (not isOccupyingVehicle))
+            Id: J29DNI5ZQJTM
+          - AlternateExpression: "if the following 4 statements are true: 1)
+              residesInSameHousehold is true; 2) isRelative is false; 3)
+              isListedOnDeclarationsPage is true; 4) driverDesignation is equal to
+              REGULAR_DRIVER, then isRatedResident is true"
+            Expression: |-
+              (=> (and residesInSameHousehold
+                      (not isRelative)
+                      isListedOnDeclarationsPage
+                      (= driverDesignation
+                          REGULAR_DRIVER))
+                  isRatedResident)
+            Id: FBR7A62AXHW7
+          - AlternateExpression: if driverDesignation is equal to EXCLUDED_DRIVER or
+              driverDesignation is equal to LIST_ONLY_DRIVER, then isRatedResident is
+              false
+            Expression: |-
+              (=> (or (= driverDesignation
+                        EXCLUDED_DRIVER)
+                      (= driverDesignation
+                        LIST_ONLY_DRIVER))
+                  (not isRatedResident))
+            Id: HT7ZVD051IX7
+          - AlternateExpression: "if the following 2 statements are true: 1)
+              residesInSameHousehold is true; 2) isRelatedByBloodMarriageAdoption is
+              true or isWardStepchildFoster is true, then isRelative is true"
+            Expression: |-
+              (=> (and residesInSameHousehold
+                      (or isRelatedByBloodMarriageAdoption
+                          isWardStepchildFoster))
+                  isRelative)
+            Id: KF57X9RLPDWG
+          - AlternateExpression: "if the following 3 statements are true: 1)
+              isUnmarriedDependentChild is true; 2) isTemporarilyAwayFromHome is true;
+              3) intendsToReturnToHousehold is true, then isRelative is true"
+            Expression: |-
+              (=> (and isUnmarriedDependentChild
+                      isTemporarilyAwayFromHome
+                      intendsToReturnToHousehold)
+                  isRelative)
+            Id: Z7368FPHEHO7
+          - AlternateExpression: if isReplacementAuto is true and notCoveredByOtherPolicy is
+              true, then hasSameCoverageAsReplacedAuto is true
+            Expression: |-
+              (=> (and isReplacementAuto
+                      notCoveredByOtherPolicy)
+                  hasSameCoverageAsReplacedAuto)
+            Id: LJ7BSRQWXY29
+          - AlternateExpression: "if the following 3 statements are true: 1)
+              isReplacementAuto is true; 2) replacedAutoHadDamageToVehicleCoverage is
+              true; 3) daysOwnedReplacementAuto is no more than 30, then
+              hasDamageToVehicleCoverage is true"
+            Expression: |-
+              (=> (and isReplacementAuto
+                      replacedAutoHadDamageToVehicleCoverage
+                      (<= daysOwnedReplacementAuto
+                          30))
+                  hasDamageToVehicleCoverage)
+            Id: JVW4RSAQ8E5T
+          - AlternateExpression: "if the following 4 statements are true: 1)
+              isReplacementAuto is true; 2) replacedAutoHadDamageToVehicleCoverage is
+              true; 3) daysOwnedReplacementAuto is greater than 30; 4)
+              notifiedWithin30DaysForDamageToVehicleCoverage is false, then
+              hasDamageToVehicleCoverage is false"
+            Expression: |-
+              (=> (and isReplacementAuto
+                      replacedAutoHadDamageToVehicleCoverage
+                      (> daysOwnedReplacementAuto
+                          30)
+                      (not notifiedWithin30DaysForDamageToVehicleCoverage))
+                  (not hasDamageToVehicleCoverage))
+            Id: IJ4MVTFRM8HM
+          - AlternateExpression: "if the following 3 statements are true: 1)
+              isReplacementAuto is true; 2) replacedAutoHadDamageToVehicleCoverage is
+              false; 3) requestedToAddDamageToVehicleCoverage is false, then
+              hasDamageToVehicleCoverage is false"
+            Expression: |-
+              (=> (and isReplacementAuto
+                      (not replacedAutoHadDamageToVehicleCoverage)
+                      (not requestedToAddDamageToVehicleCoverage))
+                  (not hasDamageToVehicleCoverage))
+            Id: YO607TJSH29X
+          - AlternateExpression: if isLoggedIntoTNCApp is true, then isRideSharingActivity is true
+            Expression: |-
+              (=> isLoggedIntoTNCApp
+                  isRideSharingActivity)
+            Id: KWOZDEG2M1X6
+          - AlternateExpression: "if the following 5 statements are true: 1)
+              isNonMotorizedTrailer is true; 2) isDesignedToBeTrailerTowed is true; 3)
+              isUsedForCommercialPurposes is false; 4) isUsedAsOfficeStoreDisplay is
+              false; 5) isUsedAsPassengerConveyance is false, then qualifiesAsTrailer is
+              true"
+            Expression: |-
+              (=> (and isNonMotorizedTrailer
+                      isDesignedToBeTrailerTowed
+                      (not isUsedForCommercialPurposes)
+                      (not isUsedAsOfficeStoreDisplay)
+                      (not isUsedAsPassengerConveyance))
+                  qualifiesAsTrailer)
+            Id: FS9DV9C88MY7
+          - AlternateExpression: if liabilityPremiumPaid is true and
+              isLegallyResponsibleForAccident is true, then liabilityCoverageApplies is
+              true
+            Expression: |-
+              (=> (and liabilityPremiumPaid
+                      isLegallyResponsibleForAccident)
+                  liabilityCoverageApplies)
+            Id: GAOKP8IEG9L3
+          - AlternateExpression: if liabilityLimitOfferedOrExhausted is true, then
+              defenseObligationExists is false
+            Expression: |-
+              (=> liabilityLimitOfferedOrExhausted
+                  (not defenseObligationExists))
+            Id: BP1795QNHLJD
+          - AlternateExpression: "if the following 2 statements are true: 1) at least one of
+              the following 3 statements is true: 1a) isNamedInsured is true; 1b)
+              isRelative is true; 1c) isRatedResident is true; 2) accidentFromAutoUse is
+              true, then qualifiesAsInsuredPerson is true"
+            Expression: |-
+              (=> (and (or isNamedInsured
+                          isRelative
+                          isRatedResident)
+                      accidentFromAutoUse)
+                  qualifiesAsInsuredPerson)
+            Id: XS68E1W5MG5G
+          - AlternateExpression: if hasPermissionToUseCoveredAuto is true and
+              accidentFromAutoUse is true, then qualifiesAsInsuredPerson is true
+            Expression: |-
+              (=> (and hasPermissionToUseCoveredAuto
+                      accidentFromAutoUse)
+                  qualifiesAsInsuredPerson)
+            Id: PDU2GHLZEQSG
+          - AlternateExpression: if hasVicariousLiability is true, then qualifiesAsInsuredPerson is true
+            Expression: |-
+              (=> hasVicariousLiability
+                  qualifiesAsInsuredPerson)
+            Id: RZ8DV5ZXKZYM
+          - AlternateExpression: if isAdditionalInterestOnDeclarationsPage is true, then
+              qualifiesAsInsuredPerson is true
+            Expression: |-
+              (=> isAdditionalInterestOnDeclarationsPage
+                  qualifiesAsInsuredPerson)
+            Id: UMCPGVLZV0WM
+          - AlternateExpression: "if the following 2 statements are true: 1) at least one of
+              the following 3 statements is true: 1a) isUsedToCarryForCompensation is
+              true; 1b) isUsedForDelivery is true; 1c) isRideSharingActivity is true; 2)
+              isSharedExpenseCarPool is false, then liabilityCoverageExcluded is true"
+            Expression: |-
+              (=> (and (or isUsedToCarryForCompensation
+                          isUsedForDelivery
+                          isRideSharingActivity)
+                      (not isSharedExpenseCarPool))
+                  liabilityCoverageExcluded)
+            Id: SE1KJUT8QO27
+          - AlternateExpression: if isSharedExpenseCarPool is true, then liabilityCoverageExcluded is false
+            Expression: |-
+              (=> isSharedExpenseCarPool
+                  (not liabilityCoverageExcluded))
+            Id: DXOAOG0Q8QAC
+          - AlternateExpression: if isLiabilityAssumedUnderContract is true, then
+              liabilityCoverageExcluded is true
+            Expression: |-
+              (=> isLiabilityAssumedUnderContract
+                  liabilityCoverageExcluded)
+            Id: UANZ73FU5WO1
+          - AlternateExpression: "if the following 3 statements are true: 1)
+              isEmployeeOfInsuredPerson is true; 2) injuryArisingFromEmployment is true;
+              3) at least one of the following 2 statements is false: 3a)
+              isDomesticEmployee is true; 3b) workersCompApplies is false, then
+              liabilityCoverageExcluded is true"
+            Expression: |-
+              (=> (and isEmployeeOfInsuredPerson
+                      injuryArisingFromEmployment
+                      (not (and isDomesticEmployee
+                                (not workersCompApplies))))
+                  liabilityCoverageExcluded)
+            Id: DN278VRXHIB1
+          - AlternateExpression: "if vehicleUsedInAutoBusiness is true and at least one of
+              the following 2 statements is false: 1) at least one of the following 4
+              statements is true: 1a) isNamedInsured is true; 1b) isRelative is true;
+              1c) isRatedResident is true; 1d) isAgentOrEmployeeOfInsuredRelativeRated
+              is true; 2) isCoveredAuto is true, then liabilityCoverageExcluded is true"
+            Expression: |-
+              (=> (and vehicleUsedInAutoBusiness
+                      (not (and (or isNamedInsured
+                                    isRelative
+                                    isRatedResident
+                                    isAgentOrEmployeeOfInsuredRelativeRated)
+                                isCoveredAuto)))
+                  liabilityCoverageExcluded)
+            Id: YPYKO6X2ARMQ
+          - AlternateExpression: "if the following 3 statements are true: 1)
+              vehicleUsedInAutoBusiness is true; 2) otherValidInsuranceExists is false;
+              3) damagesAmount is greater than minimumLiabilityLimits, then
+              liabilityCoverageExcluded is false and damagesAmount is equal to
+              minimumLiabilityLimits"
+            Expression: |-
+              (=> (and vehicleUsedInAutoBusiness
+                      (not otherValidInsuranceExists)
+                      (> damagesAmount
+                          minimumLiabilityLimits))
+                  (and (not liabilityCoverageExcluded)
+                      (= damagesAmount
+                          minimumLiabilityLimits)))
+            Id: MMACWSAJLIF2
+          - AlternateExpression: if involvesPrerrangedRacingStuntingSpeed is true or
+              involvesRacetrackDriving is true, then liabilityCoverageExcluded is true
+            Expression: |-
+              (=> (or involvesPrerrangedRacingStuntingSpeed
+                      involvesRacetrackDriving)
+                  liabilityCoverageExcluded)
+            Id: GM0B1O5EPON7
+          - AlternateExpression: if involveNuclearReactionOrRadiation is true, then
+              liabilityCoverageExcluded is true
+            Expression: |-
+              (=> involveNuclearReactionOrRadiation
+                  liabilityCoverageExcluded)
+            Id: ZKVD2SHV3B8X
+          - AlternateExpression: if coveredByNuclearEnergyInsurance is true, then
+              liabilityCoverageExcluded is true
+            Expression: |-
+              (=> coveredByNuclearEnergyInsurance
+                  liabilityCoverageExcluded)
+            Id: JASIPMBPWXOS
+          - AlternateExpression: if isUSGovernmentLiableUnderFTCA is true, then
+              liabilityCoverageExcluded is true
+            Expression: |-
+              (=> isUSGovernmentLiableUnderFTCA
+                  liabilityCoverageExcluded)
+            Id: DB5PBL0FHEVH
+          - AlternateExpression: if causedByIntentionalAct is true, then liabilityCoverageExcluded is true
+            Expression: |-
+              (=> causedByIntentionalAct
+                  liabilityCoverageExcluded)
+            Id: UYEV32EZFOR5
+          - AlternateExpression: if propertyOwnedByInsuredPerson is true and
+              isRentedResidenceOrGarage is false, then liabilityCoverageExcluded is true
+            Expression: |-
+              (=> (and propertyOwnedByInsuredPerson
+                      (not isRentedResidenceOrGarage))
+                  liabilityCoverageExcluded)
+            Id: VJY1HNKUWST3
+          - AlternateExpression: "if the following 2 statements are true: 1)
+              vehicleOwnedByNamedInsured is true or
+              vehicleAvailableForNamedInsuredRegularUse is true; 2) isCoveredAuto is
+              false, then liabilityCoverageExcluded is true"
+            Expression: |-
+              (=> (and (or vehicleOwnedByNamedInsured
+                          vehicleAvailableForNamedInsuredRegularUse)
+                      (not isCoveredAuto))
+                  liabilityCoverageExcluded)
+            Id: SEHO70MDMLHC
+          - AlternateExpression: "if the following 3 statements are true: 1)
+              vehicleOwnedByRelativeOrRatedResident is true or
+              vehicleAvailableForRelativeOrRatedResidentRegularUse is true; 2)
+              isCoveredAuto is false; 3) vehicleBeingMaintainedOrUsedByNamedInsured is
+              false, then liabilityCoverageExcluded is true"
+            Expression: |-
+              (=> (and (or vehicleOwnedByRelativeOrRatedResident
+                          vehicleAvailableForRelativeOrRatedResidentRegularUse)
+                      (not isCoveredAuto)
+                      (not vehicleBeingMaintainedOrUsedByNamedInsured))
+                  liabilityCoverageExcluded)
+            Id: GP8PKCPMWTTD
+          - AlternateExpression: if vehicleUsedWithoutPermission is true and isCoveredAuto
+              is false, then liabilityCoverageExcluded is true
+            Expression: |-
+              (=> (and vehicleUsedWithoutPermission
+                      (not isCoveredAuto))
+                  liabilityCoverageExcluded)
+            Id: KZN65Y85TVGL
+          - AlternateExpression: if coveredAutoLeasedOrRented is true and
+              coveredAutoOperatedByInsuredRelativeRated is false, then
+              liabilityCoverageExcluded is true
+            Expression: |-
+              (=> (and coveredAutoLeasedOrRented
+                      (not coveredAutoOperatedByInsuredRelativeRated))
+                  liabilityCoverageExcluded)
+            Id: ZWRC1EZPIXVM
+          - AlternateExpression: if involvePunitiveExemplaryDamages is true, then
+              liabilityCoverageExcluded is true
+            Expression: |-
+              (=> involvePunitiveExemplaryDamages
+                  liabilityCoverageExcluded)
+            Id: GS7WAFLNK4RX
+          - AlternateExpression: if usedWithPersonalVehicleSharingProgram is true, then
+              liabilityCoverageExcluded is true
+            Expression: |-
+              (=> usedWithPersonalVehicleSharingProgram
+                  liabilityCoverageExcluded)
+            Id: NUBA52AZ5CYG
+          - AlternateExpression: if liabilityLimitType is equal to SPLIT_LIMIT, then
+              bodyInjuryDamagesPerPerson is no more than eachPersonLimit
+            Expression: |-
+              (=> (= liabilityLimitType
+                    SPLIT_LIMIT)
+                  (<= bodyInjuryDamagesPerPerson
+                      eachPersonLimit))
+            Id: EB21YC8623T7
+          - AlternateExpression: if liabilityLimitType is equal to SPLIT_LIMIT, then
+              totalBodyInjuryDamages is no more than eachAccidentLimit
+            Expression: |-
+              (=> (= liabilityLimitType
+                    SPLIT_LIMIT)
+                  (<= totalBodyInjuryDamages
+                      eachAccidentLimit))
+            Id: FWET9QN6X91W
+          - AlternateExpression: if liabilityLimitType is equal to SPLIT_LIMIT, then
+              totalPropertyDamages is no more than propertyDamageLimit
+            Expression: |-
+              (=> (= liabilityLimitType
+                    SPLIT_LIMIT)
+                  (<= totalPropertyDamages
+                      propertyDamageLimit))
+            Id: A2I0W6ZEL3AJ
+          - AlternateExpression: if liabilityLimitType is equal to COMBINED_SINGLE_LIMIT,
+              then totalBodyInjuryDamages + totalPropertyDamages is no more than
+              combinedSingleLimit
+            Expression: |-
+              (=> (= liabilityLimitType
+                    COMBINED_SINGLE_LIMIT)
+                  (<= (+ totalBodyInjuryDamages
+                        totalPropertyDamages)
+                      combinedSingleLimit))
+            Id: CGV10ZIM7JD4
+          - AlternateExpression: if paymentUnderUninsuredMotoristCoverage is greater than 0,
+              then maxLiabilityPayment is equal to maxLiabilityPayment -
+              paymentUnderUninsuredMotoristCoverage
+            Expression: |-
+              (=> (> paymentUnderUninsuredMotoristCoverage
+                    0)
+                  (= maxLiabilityPayment
+                    (- maxLiabilityPayment
+                        paymentUnderUninsuredMotoristCoverage)))
+            Id: NTXOLAQ5EH7V
+          - AlternateExpression: if expensesPaidUnderMedicalPayments is greater than 0, then
+              maxLiabilityPayment is equal to maxLiabilityPayment -
+              expensesPaidUnderMedicalPayments
+            Expression: |-
+              (=> (> expensesPaidUnderMedicalPayments
+                    0)
+                  (= maxLiabilityPayment
+                    (- maxLiabilityPayment
+                        expensesPaidUnderMedicalPayments)))
+            Id: WBS9RWFGEF4D
+          - AlternateExpression: if multipleAutoPoliciesInEffect is true, then
+              maxLiabilityPayment is no more than highestLimitOfLiability
+            Expression: |-
+              (=> multipleAutoPoliciesInEffect
+                  (<= maxLiabilityPayment
+                      highestLimitOfLiability))
+            Id: YW5W478M1EU1
+          - AlternateExpression: involveAutoWithAttachedTrailer
+            Expression: involveAutoWithAttachedTrailer
+            Id: S13DG1SKA6GN
+          - AlternateExpression: "if the following 6 statements are true: 1)
+              medicalPaymentsPremiumPaid is true; 2) qualifiesAsInsuredPerson is true;
+              3) injuryCausedByMotorVehicleAccident is true; 4) daysFromAccident is no
+              more than 1095; 5) expensesReasonable is true; 6) medicalServicesNecessary
+              is true, then medicalPaymentsCoverageApplies is true"
+            Expression: |-
+              (=> (and medicalPaymentsPremiumPaid
+                      qualifiesAsInsuredPerson
+                      injuryCausedByMotorVehicleAccident
+                      (<= daysFromAccident
+                          1095)
+                      expensesReasonable
+                      medicalServicesNecessary)
+                  medicalPaymentsCoverageApplies)
+            Id: JLZQ8G96GGNS
+          - AlternateExpression: "if the following 2 statements are true: 1) at least one of
+              the following 3 statements is true: 1a) isNamedInsured is true; 1b)
+              isRelative is true; 1c) isRatedResident is true; 2) isOccupyingVehicle is
+              true, then qualifiesAsInsuredPersonForMedical is true"
+            Expression: |-
+              (=> (and (or isNamedInsured
+                          isRelative
+                          isRatedResident)
+                      isOccupyingVehicle)
+                  qualifiesAsInsuredPersonForMedical)
+            Id: UWJW76CNGCPB
+          - AlternateExpression: "if the following 3 statements are true: 1) at least one of
+              the following 3 statements is true: 1a) isNamedInsured is true; 1b)
+              isRelative is true; 1c) isRatedResident is true; 2)
+              struckByMotorVehicleOrTrailer is true; 3) occupyingSelfPropelledVehicle is
+              false, then qualifiesAsInsuredPersonForMedical is true"
+            Expression: |-
+              (=> (and (or isNamedInsured
+                          isRelative
+                          isRatedResident)
+                      struckByMotorVehicleOrTrailer
+                      (not occupyingSelfPropelledVehicle))
+                  qualifiesAsInsuredPersonForMedical)
+            Id: IO5U9REKD8E2
+          - AlternateExpression: "if the following 3 statements are true: 1)
+              isOccupyingVehicle is true; 2) isCoveredAuto is true; 3)
+              hasPermissionToUseCoveredAuto is true, then
+              qualifiesAsInsuredPersonForMedical is true"
+            Expression: |-
+              (=> (and isOccupyingVehicle
+                      isCoveredAuto
+                      hasPermissionToUseCoveredAuto)
+                  qualifiesAsInsuredPersonForMedical)
+            Id: ONUQVKFCSC2C
+          - AlternateExpression: "if the following 4 statements are true: 1)
+              isOccupyingVehicle is true; 2) isCoveredAuto is true; 3) at least one of
+              the following 3 statements is true: 3a) isUsedToCarryForCompensation is
+              true; 3b) isUsedForDelivery is true; 3c) isRideSharingActivity is true; 4)
+              isSharedExpenseCarPool is false, then medicalPaymentsCoverageExcluded is
+              true"
+            Expression: |-
+              (=> (and isOccupyingVehicle
+                      isCoveredAuto
+                      (or isUsedToCarryForCompensation
+                          isUsedForDelivery
+                          isRideSharingActivity)
+                      (not isSharedExpenseCarPool))
+                  medicalPaymentsCoverageExcluded)
+            Id: PU5K6FDZ3I3V
+          - AlternateExpression: if isSharedExpenseCarPool is true, then
+              medicalPaymentsCoverageExcluded is false
+            Expression: |-
+              (=> isSharedExpenseCarPool
+                  (not medicalPaymentsCoverageExcluded))
+            Id: TE4FU16RJ7FS
+          - AlternateExpression: "if vehicleUsedInAutoBusiness is true and at least one of
+              the following 2 statements is false: 1) at least one of the following 4
+              statements is true: 1a) isNamedInsured is true; 1b) isRelative is true;
+              1c) isRatedResident is true; 1d) isAgentOrEmployeeOfInsuredRelativeRated
+              is true; 2) isCoveredAuto is true, then medicalPaymentsCoverageExcluded is
+              true"
+            Expression: |-
+              (=> (and vehicleUsedInAutoBusiness
+                      (not (and (or isNamedInsured
+                                    isRelative
+                                    isRatedResident
+                                    isAgentOrEmployeeOfInsuredRelativeRated)
+                                isCoveredAuto)))
+                  medicalPaymentsCoverageExcluded)
+            Id: VIFVJUQU6LOO
+          - AlternateExpression: if involvesPrerrangedRacingStuntingSpeed is true or
+              involvesRacetrackDriving is true, then medicalPaymentsCoverageExcluded is
+              true
+            Expression: |-
+              (=> (or involvesPrerrangedRacingStuntingSpeed
+                      involvesRacetrackDriving)
+                  medicalPaymentsCoverageExcluded)
+            Id: ZL2FLZAYIP1W
+          - AlternateExpression: if involveNuclearReactionOrRadiation is true, then
+              medicalPaymentsCoverageExcluded is true
+            Expression: |-
+              (=> involveNuclearReactionOrRadiation
+                  medicalPaymentsCoverageExcluded)
+            Id: S4SYVOHO9EDE
+          - AlternateExpression: if coveredByNuclearEnergyInsurance is true, then
+              medicalPaymentsCoverageExcluded is true
+            Expression: |-
+              (=> coveredByNuclearEnergyInsurance
+                  medicalPaymentsCoverageExcluded)
+            Id: ZOF529JIW7AU
+          - AlternateExpression: if isUSGovernmentLiableUnderFTCA is true, then
+              medicalPaymentsCoverageExcluded is true
+            Expression: |-
+              (=> isUSGovernmentLiableUnderFTCA
+                  medicalPaymentsCoverageExcluded)
+            Id: DIF2UKPIJM6K
+          - AlternateExpression: if vehicleUsedAsResidence is true, then
+              medicalPaymentsCoverageExcluded is true
+            Expression: |-
+              (=> vehicleUsedAsResidence
+                  medicalPaymentsCoverageExcluded)
+            Id: DRWDDDNGULWH
+          - AlternateExpression: if workersCompAvailableForInjury is true, then
+              medicalPaymentsCoverageExcluded is true
+            Expression: |-
+              (=> workersCompAvailableForInjury
+                  medicalPaymentsCoverageExcluded)
+            Id: VUWL410SHRAJ
+          - AlternateExpression: "if the following 2 statements are true: 1)
+              vehicleOwnedByNamedInsured is true or
+              vehicleAvailableForNamedInsuredRegularUse is true; 2) isCoveredAuto is
+              false, then medicalPaymentsCoverageExcluded is true"
+            Expression: |-
+              (=> (and (or vehicleOwnedByNamedInsured
+                          vehicleAvailableForNamedInsuredRegularUse)
+                      (not isCoveredAuto))
+                  medicalPaymentsCoverageExcluded)
+            Id: BGK6TTKJZL14
+          - AlternateExpression: "if the following 3 statements are true: 1)
+              vehicleOwnedByRelativeOrRatedResident is true or
+              vehicleAvailableForRelativeOrRatedResidentRegularUse is true; 2)
+              isCoveredAuto is false; 3) isNamedInsured is false, then
+              medicalPaymentsCoverageExcluded is true"
+            Expression: |-
+              (=> (and (or vehicleOwnedByRelativeOrRatedResident
+                          vehicleAvailableForRelativeOrRatedResidentRegularUse)
+                      (not isCoveredAuto)
+                      (not isNamedInsured))
+                  medicalPaymentsCoverageExcluded)
+            Id: FI7RE7FHAE2Y
+          - AlternateExpression: "if the following 4 statements are true: 1) at least one of
+              the following 3 statements is true: 1a) isNamedInsured is true; 1b)
+              isRelative is true; 1c) isRatedResident is true; 2) isOccupyingVehicle is
+              true; 3) isCoveredAuto is false; 4) vehicleUsedWithoutPermission is true,
+              then medicalPaymentsCoverageExcluded is true"
+            Expression: |-
+              (=> (and (or isNamedInsured
+                          isRelative
+                          isRatedResident)
+                      isOccupyingVehicle
+                      (not isCoveredAuto)
+                      vehicleUsedWithoutPermission)
+                  medicalPaymentsCoverageExcluded)
+            Id: VAGIHH8TGAMY
+          - AlternateExpression: "if the following 4 statements are true: 1)
+              isOccupyingVehicle is true; 2) isCoveredAuto is true; 3)
+              coveredAutoLeasedOrRented is true; 4)
+              coveredAutoOperatedByInsuredRelativeRated is false, then
+              medicalPaymentsCoverageExcluded is true"
+            Expression: |-
+              (=> (and isOccupyingVehicle
+                      isCoveredAuto
+                      coveredAutoLeasedOrRented
+                      (not coveredAutoOperatedByInsuredRelativeRated))
+                  medicalPaymentsCoverageExcluded)
+            Id: M05FYKFSB65G
+          - AlternateExpression: "if at least one of the following 3 statements is true: 1)
+              causedByWarOrCivilWar is true; 2) causedByWarlikeAction is true; 3)
+              causedByInsurrectionRebellion is true, then
+              medicalPaymentsCoverageExcluded is true"
+            Expression: |-
+              (=> (or causedByWarOrCivilWar
+                      causedByWarlikeAction
+                      causedByInsurrectionRebellion)
+                  medicalPaymentsCoverageExcluded)
+            Id: KAUA9VN4T3GU
+          - AlternateExpression: if causedByRadioactiveOrBiologicalRelease is true, then
+              medicalPaymentsCoverageExcluded is true
+            Expression: |-
+              (=> causedByRadioactiveOrBiologicalRelease
+                  medicalPaymentsCoverageExcluded)
+            Id: P54RW94WVJW7
+        Types:
+          - Description: The type of vehicle as defined by the policy
+            Name: VehicleType
+            Values:
+              - Description: A private passenger type vehicle
+                Value: PRIVATE_PASSENGER
+              - Description: A pickup truck type vehicle
+                Value: PICKUP_BODY
+              - Description: A cargo van type vehicle
+                Value: CARGO_VAN
+              - Description: A step-van type vehicle
+                Value: STEP_VAN
+              - Description: A parcel delivery van type vehicle
+                Value: PARCEL_DELIVERY_VAN
+              - Description: A cargo cutaway van or other van with cab separate from cargo area
+                Value: CARGO_CUTAWAY_VAN
+              - Description: Any other type of vehicle not specifically defined in the policy
+                Value: OTHER_VEHICLE
+          - Description: The position or action of a person in relation to a vehicle
+            Name: OccupyingStatus
+            Values:
+              - Description: Person is inside the vehicle
+                Value: IN_VEHICLE
+              - Description: Person is on the vehicle
+                Value: ON_VEHICLE
+              - Description: Person is in the process of entering the vehicle
+                Value: ENTERING_VEHICLE
+              - Description: Person is in the process of exiting the vehicle
+                Value: EXITING_VEHICLE
+              - Description: Person is not in, on, entering, or exiting the vehicle
+                Value: NOT_OCCUPYING
+          - Description: The designation of a driver listed on the declarations page
+            Name: DriverDesignation
+            Values:
+              - Description: A regular driver with no special designation
+                Value: REGULAR_DRIVER
+              - Description: A driver who is specifically excluded from coverage
+                Value: EXCLUDED_DRIVER
+              - Description: A driver designated as 'List Only' on the declarations page
+                Value: LIST_ONLY_DRIVER
+          - Description: The type of liability limit structure shown on the declarations page
+            Name: LiabilityLimitType
+            Values:
+              - Description: Separate limits for each person, each accident, and property damage
+                Value: SPLIT_LIMIT
+              - Description: A single limit that applies to all damages from one accident
+                Value: COMBINED_SINGLE_LIMIT
+        Variables:
+          - Description: Indicates whether the insured has paid the premium for the policy
+            Name: premiumPaid
+            Type: BOOL
+          - Description: Indicates whether the insurance policy is currently in effect and
+              providing coverage
+            Name: policyInEffect
+            Type: BOOL
+          - Description: Indicates whether a vehicle is considered an 'additional auto' that
+              was acquired during the policy period and does not permanently replace an
+              auto shown on the declarations page
+            Name: isAdditionalAuto
+            Type: BOOL
+          - Description: Indicates whether all other autos owned by the insured person are
+              insured by the insurance company
+            Name: allOtherAutosInsured
+            Type: BOOL
+          - Description: Indicates whether the auto is not covered by any other insurance policy
+            Name: notCoveredByOtherPolicy
+            Type: BOOL
+          - Description: Indicates whether the insured person notified the insurance company
+              within 30 days of becoming the owner of the additional auto
+            Name: notifiedWithin30Days
+            Type: BOOL
+          - Description: Indicates whether the insured person has paid any additional
+              premium due for adding an additional auto
+            Name: additionalPremiumPaid
+            Type: BOOL
+          - Description: Indicates whether coverage is provided for an additional auto
+            Name: additionalAutoCoverage
+            Type: BOOL
+          - Description: Indicates whether the insured requested to insure an additional
+              auto more than 30 days after becoming the owner
+            Name: requestedAfter30Days
+            Type: BOOL
+          - Description: Indicates that coverage for an additional auto begins at the time
+              of request rather than from the time of acquisition
+            Name: coverageStartsAtRequestTime
+            Type: BOOL
+          - Description: The type of vehicle being considered for coverage
+            Name: vehicleType
+            Type: VehicleType
+          - Description: Indicates whether the vehicle is designed primarily for operation
+              on public roads
+            Name: designedForPublicRoads
+            Type: BOOL
+          - Description: Indicates whether the vehicle has at least four wheels
+            Name: hasAtLeastFourWheels
+            Type: BOOL
+          - Description: The gross vehicle weight rating in pounds according to manufacturer
+              specifications
+            Name: grossVehicleWeightRating
+            Type: NUMBER
+          - Description: Indicates whether a vehicle qualifies as an 'auto' under the policy
+              definition
+            Name: isQualifyingAuto
+            Type: BOOL
+          - Description: Indicates whether an activity is related to the auto business of
+              selling, leasing, repairing, parking, storing, servicing, delivering or
+              testing vehicles
+            Name: isAutoBusinessActivity
+            Type: BOOL
+          - Description: Indicates whether an injury qualifies as 'bodily injury' under the
+              policy definition, including bodily harm, sickness, disease, or death
+              resulting from those causes
+            Name: isBodilyInjury
+            Type: BOOL
+          - Description: Indicates whether a vehicle is listed on the declarations page with
+              applicable coverages
+            Name: isAutoOnDeclarationsPage
+            Type: BOOL
+          - Description: Indicates whether a vehicle is a replacement auto that permanently
+              replaces an auto shown on the declarations page
+            Name: isReplacementAuto
+            Type: BOOL
+          - Description: Indicates whether a trailer is owned by the insured person
+            Name: isTrailerOwnedByInsured
+            Type: BOOL
+          - Description: Indicates whether a vehicle qualifies as a 'covered auto' under the
+              policy definition
+            Name: isCoveredAuto
+            Type: BOOL
+          - Description: The status of a person in relation to a vehicle - whether they are
+              in, on, entering, or exiting the vehicle
+            Name: occupyingStatus
+            Type: OccupyingStatus
+          - Description: Indicates whether a person is considered to be 'occupying' a
+              vehicle as defined by the policy
+            Name: isOccupyingVehicle
+            Type: BOOL
+          - Description: Indicates whether a system or process qualifies as a personal
+              vehicle sharing program that facilitates sharing of private passenger
+              vehicles
+            Name: isPersonalVehicleSharingProgram
+            Type: BOOL
+          - Description: Indicates whether damage qualifies as 'property damage' under the
+              policy, including physical damage, destruction, or loss of use of tangible
+              property
+            Name: isPropertyDamage
+            Type: BOOL
+          - Description: Indicates whether a person resides in the same household as the
+              named insured at the time of the loss
+            Name: residesInSameHousehold
+            Type: BOOL
+          - Description: Indicates whether a person is related to the named insured by
+              blood, marriage, or adoption, or is a ward, stepchild, or foster child
+            Name: isRelative
+            Type: BOOL
+          - Description: Indicates whether a person is listed in the 'Drivers and household
+              residents' section of the declarations page
+            Name: isListedOnDeclarationsPage
+            Type: BOOL
+          - Description: The designation of a driver as listed on the declarations page
+            Name: driverDesignation
+            Type: DriverDesignation
+          - Description: Indicates whether a person qualifies as a 'rated resident' under
+              the policy definition
+            Name: isRatedResident
+            Type: BOOL
+          - Description: Indicates whether a person is related to the named insured by
+              blood, marriage, or adoption
+            Name: isRelatedByBloodMarriageAdoption
+            Type: BOOL
+          - Description: Indicates whether a person is a ward, stepchild, or foster child of
+              the named insured
+            Name: isWardStepchildFoster
+            Type: BOOL
+          - Description: Indicates whether a person is an unmarried dependent child of the
+              named insured
+            Name: isUnmarriedDependentChild
+            Type: BOOL
+          - Description: Indicates whether a person is temporarily away from the named
+              insured's home
+            Name: isTemporarilyAwayFromHome
+            Type: BOOL
+          - Description: Indicates whether a person intends to continue residing in the
+              named insured's household
+            Name: intendsToReturnToHousehold
+            Type: BOOL
+          - Description: Indicates whether a vehicle permanently replaces an auto shown on
+              the declarations page
+            Name: permanentlyReplacesListedAuto
+            Type: BOOL
+          - Description: Indicates whether the auto being replaced had coverage under Part
+              IV-Damage to a Vehicle
+            Name: replacedAutoHadDamageToVehicleCoverage
+            Type: BOOL
+          - Description: Indicates whether the insured notified the company within 30 days
+              of ownership to extend Part IV-Damage to Vehicle coverage beyond 30 days
+            Name: notifiedWithin30DaysForDamageToVehicleCoverage
+            Type: BOOL
+          - Description: Indicates whether the insured has requested to add Part IV-Damage
+              to Vehicle coverage for a replacement auto
+            Name: requestedToAddDamageToVehicleCoverage
+            Type: BOOL
+          - Description: The number of days since the insured became the owner of the
+              replacement auto
+            Name: daysOwnedReplacementAuto
+            Type: INT
+          - Description: Indicates whether a replacement auto has the same coverage as the
+              auto it replaced
+            Name: hasSameCoverageAsReplacedAuto
+            Type: BOOL
+          - Description: Indicates whether a vehicle has coverage under Part IV-Damage to a Vehicle
+            Name: hasDamageToVehicleCoverage
+            Type: BOOL
+          - Description: Indicates whether an activity qualifies as ride-sharing, which
+              means using a vehicle in connection with a transportation network company
+              while logged into their app
+            Name: isRideSharingActivity
+            Type: BOOL
+          - Description: Indicates whether a driver is logged in to or signed in to a
+              transportation network company's online-enabled application, software,
+              website, or system
+            Name: isLoggedIntoTNCApp
+            Type: BOOL
+          - Description: Indicates whether the vehicle is a non-motorized trailer
+            Name: isNonMotorizedTrailer
+            Type: BOOL
+          - Description: Indicates whether the vehicle is designed to be towed on public
+              roads by an auto
+            Name: isDesignedToBeTrailerTowed
+            Type: BOOL
+          - Description: Indicates whether the trailer is being used for commercial purposes
+            Name: isUsedForCommercialPurposes
+            Type: BOOL
+          - Description: Indicates whether the trailer is being used as an office, store, or
+              for display purposes
+            Name: isUsedAsOfficeStoreDisplay
+            Type: BOOL
+          - Description: Indicates whether the trailer is being used as a passenger conveyance
+            Name: isUsedAsPassengerConveyance
+            Type: BOOL
+          - Description: Indicates whether a vehicle qualifies as a 'trailer' under the
+              policy definition
+            Name: qualifiesAsTrailer
+            Type: BOOL
+          - Description: Indicates whether a business entity qualifies as a transportation
+              network company that uses online applications to connect drivers with
+              clients for transportation or delivery services for compensation
+            Name: isTransportationNetworkCompany
+            Type: BOOL
+          - Description: Indicates whether the premium for liability coverage has been paid
+            Name: liabilityPremiumPaid
+            Type: BOOL
+          - Description: Indicates whether an insured person is legally responsible for
+              bodily injury or property damage because of an accident
+            Name: isLegallyResponsibleForAccident
+            Type: BOOL
+          - Description: Indicates whether the limit of liability under Part I has been
+              offered, exhausted by payment, or deposited with a court having
+              jurisdiction
+            Name: liabilityLimitOfferedOrExhausted
+            Type: BOOL
+          - Description: Indicates whether liability coverage applies to a particular situation
+            Name: liabilityCoverageApplies
+            Type: BOOL
+          - Description: Indicates whether the insurance company is obligated to defend a
+              lawsuit under Part I
+            Name: defenseObligationExists
+            Type: BOOL
+          - Description: Indicates whether the person is a named insured shown on the
+              declarations page
+            Name: isNamedInsured
+            Type: BOOL
+          - Description: Indicates whether an accident arose out of the ownership,
+              maintenance, or use of an auto or trailer
+            Name: accidentFromAutoUse
+            Type: BOOL
+          - Description: Indicates whether a person has permission from the insured, a
+              relative, or a rated resident to use a covered auto
+            Name: hasPermissionToUseCoveredAuto
+            Type: BOOL
+          - Description: Indicates whether a person or organization has vicarious liability
+              for the acts or omissions of an insured person
+            Name: hasVicariousLiability
+            Type: BOOL
+          - Description: Indicates whether a person or organization is listed as an
+              'Additional Interest' on the declarations page
+            Name: isAdditionalInterestOnDeclarationsPage
+            Type: BOOL
+          - Description: Indicates whether a person qualifies as an 'insured person' under
+              the liability coverage of the policy
+            Name: qualifiesAsInsuredPerson
+            Type: BOOL
+          - Description: Indicates whether a vehicle is being used to carry persons or
+              property for compensation or a fee
+            Name: isUsedToCarryForCompensation
+            Type: BOOL
+          - Description: Indicates whether a vehicle is being used for retail or wholesale
+              delivery, including pickup, transport, or delivery of magazines,
+              newspapers, mail, or food
+            Name: isUsedForDelivery
+            Type: BOOL
+          - Description: Indicates whether the vehicle use involves a shared-expense car pool
+            Name: isSharedExpenseCarPool
+            Type: BOOL
+          - Description: Indicates whether liability coverage is excluded for a particular situation
+            Name: liabilityCoverageExcluded
+            Type: BOOL
+          - Description: Indicates whether liability was assumed under a contract or
+              agreement by the insured, a relative, or a rated resident
+            Name: isLiabilityAssumedUnderContract
+            Type: BOOL
+          - Description: Indicates whether the injured person is an employee of the insured person
+            Name: isEmployeeOfInsuredPerson
+            Type: BOOL
+          - Description: Indicates whether the injury arose out of or within the course of
+              employment
+            Name: injuryArisingFromEmployment
+            Type: BOOL
+          - Description: Indicates whether the injured person is a domestic employee
+            Name: isDomesticEmployee
+            Type: BOOL
+          - Description: Indicates whether workers' compensation, disability benefits, or
+              similar laws apply to provide benefits for the injury
+            Name: workersCompApplies
+            Type: BOOL
+          - Description: Indicates whether the accident involves a vehicle being maintained
+              or used by a person employed or engaged in auto business
+            Name: vehicleUsedInAutoBusiness
+            Type: BOOL
+          - Description: Indicates whether other valid and collectible insurance exists with
+              limits equal to or greater than Wisconsin's minimum liability limits
+            Name: otherValidInsuranceExists
+            Type: BOOL
+          - Description: Indicates whether a person is an agent or employee of the insured,
+              a relative, or a rated resident
+            Name: isAgentOrEmployeeOfInsuredRelativeRated
+            Type: BOOL
+          - Description: The minimum limits of liability coverage required by Wisconsin's
+              financial responsibility law
+            Name: minimumLiabilityLimits
+            Type: NUMBER
+          - Description: The amount of damages involved in a claim
+            Name: damagesAmount
+            Type: NUMBER
+          - Description: Indicates whether the accident involves pre-arranged or organized
+              racing, stunting, speed or demolition contests or activities
+            Name: involvesPrerrangedRacingStuntingSpeed
+            Type: BOOL
+          - Description: Indicates whether the accident involves driving on a permanent or
+              temporary racetrack or racecourse
+            Name: involvesRacetrackDriving
+            Type: BOOL
+          - Description: Indicates whether the bodily injury or property damage is due to a
+              nuclear reaction or radiation
+            Name: involveNuclearReactionOrRadiation
+            Type: BOOL
+          - Description: Indicates whether the damage is covered by a nuclear energy
+              liability insurance contract or would be except for exhaustion of limits
+            Name: coveredByNuclearEnergyInsurance
+            Type: BOOL
+          - Description: Indicates whether the obligation is one for which the United States
+              Government is liable under the Federal Tort Claims Act
+            Name: isUSGovernmentLiableUnderFTCA
+            Type: BOOL
+          - Description: Indicates whether the bodily injury or property damage was caused
+              by an intentional act of the insured person
+            Name: causedByIntentionalAct
+            Type: BOOL
+          - Description: Indicates whether the damaged property is owned by, rented to,
+              transported by, used by, or in charge of the insured person
+            Name: propertyOwnedByInsuredPerson
+            Type: BOOL
+          - Description: Indicates whether the property is a rented residence or rented garage
+            Name: isRentedResidenceOrGarage
+            Type: BOOL
+          - Description: Indicates whether the vehicle involved is owned by the named insured
+            Name: vehicleOwnedByNamedInsured
+            Type: BOOL
+          - Description: Indicates whether the vehicle is furnished or available for the
+              named insured's regular use
+            Name: vehicleAvailableForNamedInsuredRegularUse
+            Type: BOOL
+          - Description: Indicates whether the vehicle is owned by a relative or rated resident
+            Name: vehicleOwnedByRelativeOrRatedResident
+            Type: BOOL
+          - Description: Indicates whether the vehicle is furnished or available for regular
+              use by a relative or rated resident
+            Name: vehicleAvailableForRelativeOrRatedResidentRegularUse
+            Type: BOOL
+          - Description: Indicates whether the vehicle is being maintained or used by the
+              named insured
+            Name: vehicleBeingMaintainedOrUsedByNamedInsured
+            Type: BOOL
+          - Description: Indicates whether the insured, relative, or rated resident used a
+              vehicle without the permission of the owner or person in lawful possession
+            Name: vehicleUsedWithoutPermission
+            Type: BOOL
+          - Description: Indicates whether a covered auto was leased or rented to others or
+              given in exchange for compensation
+            Name: coveredAutoLeasedOrRented
+            Type: BOOL
+          - Description: Indicates whether the covered auto was being operated by the
+              insured, a relative, or a rated resident
+            Name: coveredAutoOperatedByInsuredRelativeRated
+            Type: BOOL
+          - Description: Indicates whether the damages are punitive or exemplary
+            Name: involvePunitiveExemplaryDamages
+            Type: BOOL
+          - Description: Indicates whether the vehicle was being used in connection with a
+              personal vehicle sharing program
+            Name: usedWithPersonalVehicleSharingProgram
+            Type: BOOL
+          - Description: The type of liability limit structure shown on the declarations
+              page - either split limit or combined single limit
+            Name: liabilityLimitType
+            Type: LiabilityLimitType
+          - Description: The maximum amount paid for all damages due to bodily injury to one
+              person in an accident
+            Name: eachPersonLimit
+            Type: NUMBER
+          - Description: The maximum amount paid for all bodily injury damages in one
+              accident, subject to the per-person limit
+            Name: eachAccidentLimit
+            Type: NUMBER
+          - Description: The maximum amount paid for all property damage in one accident
+            Name: propertyDamageLimit
+            Type: NUMBER
+          - Description: The maximum amount paid for the total of all damages (bodily injury
+              and property damage) resulting from one accident
+            Name: combinedSingleLimit
+            Type: NUMBER
+          - Description: The number of persons who sustained bodily injury in an accident
+            Name: numberOfInjuredPersons
+            Type: INT
+          - Description: The amount of bodily injury damages per injured person, including
+              derivative claims
+            Name: bodyInjuryDamagesPerPerson
+            Type: NUMBER
+          - Description: The total amount of bodily injury damages for all persons
+            Name: totalBodyInjuryDamages
+            Type: NUMBER
+          - Description: The total amount of property damage from an accident
+            Name: totalPropertyDamages
+            Type: NUMBER
+          - Description: The maximum amount the insurance will pay under liability coverage
+              for a particular accident
+            Name: maxLiabilityPayment
+            Type: NUMBER
+          - Description: The amount paid to a person under Part III-Uninsured/Underinsured
+              Motorist Coverage
+            Name: paymentUnderUninsuredMotoristCoverage
+            Type: NUMBER
+          - Description: The amount of expenses paid or payable under Part II-Medical
+              Payments Coverage
+            Name: expensesPaidUnderMedicalPayments
+            Type: NUMBER
+          - Description: Indicates whether multiple auto policies issued by the same company
+              are in effect for the insured
+            Name: multipleAutoPoliciesInEffect
+            Type: BOOL
+          - Description: The highest limit of liability available under any one policy when
+              multiple policies are in effect
+            Name: highestLimitOfLiability
+            Type: NUMBER
+          - Description: Indicates whether the accident involves an auto with an attached trailer
+            Name: involveAutoWithAttachedTrailer
+            Type: BOOL
+          - Description: Indicates whether the premium for Medical Payments Coverage has been paid
+            Name: medicalPaymentsPremiumPaid
+            Type: BOOL
+          - Description: The amount of medical expenses incurred for necessary medical services
+            Name: medicalExpensesIncurred
+            Type: NUMBER
+          - Description: The number of days between the date of the accident and when
+              medical services were received
+            Name: daysFromAccident
+            Type: INT
+          - Description: Indicates whether the bodily injury was caused by a motor vehicle accident
+            Name: injuryCausedByMotorVehicleAccident
+            Type: BOOL
+          - Description: Indicates whether the expenses for medical services are deemed reasonable
+            Name: expensesReasonable
+            Type: BOOL
+          - Description: Indicates whether the medical services are deemed necessary
+            Name: medicalServicesNecessary
+            Type: BOOL
+          - Description: Indicates whether Medical Payments Coverage applies to a particular
+              situation
+            Name: medicalPaymentsCoverageApplies
+            Type: BOOL
+          - Description: Indicates whether a person was struck by a motor vehicle or trailer
+            Name: struckByMotorVehicleOrTrailer
+            Type: BOOL
+          - Description: Indicates whether a person was occupying a self-propelled motorized
+              vehicle when struck
+            Name: occupyingSelfPropelledVehicle
+            Type: BOOL
+          - Description: Indicates whether a person qualifies as an 'insured person' under
+              the Medical Payments Coverage
+            Name: qualifiesAsInsuredPersonForMedical
+            Type: BOOL
+          - Description: Indicates whether Medical Payments Coverage is excluded for a
+              particular situation
+            Name: medicalPaymentsCoverageExcluded
+            Type: BOOL
+          - Description: Indicates whether the vehicle or trailer was located for use as a
+              residence or premises
+            Name: vehicleUsedAsResidence
+            Type: BOOL
+          - Description: Indicates whether workers' compensation benefits are available for
+              the bodily injury
+            Name: workersCompAvailableForInjury
+            Type: BOOL
+          - Description: Indicates whether the injury was caused by war (declared or
+              undeclared) or civil war
+            Name: causedByWarOrCivilWar
+            Type: BOOL
+          - Description: Indicates whether the injury was caused by warlike action by
+              military forces
+            Name: causedByWarlikeAction
+            Type: BOOL
+          - Description: Indicates whether the injury was caused by insurrection, rebellion,
+              revolution, or usurped power
+            Name: causedByInsurrectionRebellion
+            Type: BOOL
+          - Description: Indicates whether the injury was caused by discharge of
+              radioactive, nuclear, pathogenic, or poisonous biological material
+            Name: causedByRadioactiveOrBiologicalRelease
+            Type: BOOL
+          - Description: Indicates whether the injury was caused by intentional discharge of
+              chemical or hazardous material for purposes other than its safe use
+            Name: causedByChemicalOrHazardousRelease
+            Type: BOOL
+        Version: "1"
+
+  ExampleAutoPolicyContractPolicyVersion:
+    Type: AWS::Bedrock::AutomatedReasoningPolicyVersion
+    Properties:
+      PolicyArn: !GetAtt ExampleAutoPolicyContractPolicy.PolicyArn
+      LastUpdatedDefinitionHash: !GetAtt ExampleAutoPolicyContractPolicy.DefinitionHash
+  
+  ExampleGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Properties:
+      Description: "Example Guardrail"
+      Name: "ExampleGuardrail"
+      BlockedInputMessaging: "Input blocked by guardrail."
+      BlockedOutputsMessaging: "Output blocked by guardrail."
+      CrossRegionConfig: 
+        GuardrailProfileArn: !Sub 'arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:guardrail-profile/us.guardrail.v1:0'
+      AutomatedReasoningPolicyConfig: 
+        ConfidenceThreshold: 1.0
+        Policies:
+          - !GetAtt ExampleAutoPolicyContractPolicy.PolicyArn
+
+  DefaultVpcLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: CFGetDefaultVpcId
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+
+          ec2 = boto3.client('ec2')
+
+          def lambda_handler(event, context):              
+              if 'RequestType' in event and event['RequestType'] == 'Create':
+                  vpc_id = get_default_vpc_id()
+                  subnets = get_subnets_for_vpc(vpc_id)
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {'VpcId': vpc_id, 'Subnets': subnets}, '')
+              else:
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {}, '')
+
+          def get_default_vpc_id():
+              vpcs = ec2.describe_vpcs(Filters=[{'Name': 'is-default', 'Values': ['true']}])
+              vpc_id = vpcs['Vpcs'][0]['VpcId']
+              return vpc_id
+
+          def get_subnets_for_vpc(vpcId):
+              response = ec2.describe_subnets(Filters=[{'Name': 'vpc-id', 'Values': [vpcId]}])
+              subnet_ids = [subnet['SubnetId'] for subnet in response['Subnets']]
+              return subnet_ids 
+      Description: Return default VPC ID and Subnets
+      Handler: index.lambda_handler
+      MemorySize: 512
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.13
+      Timeout: 5
+
+  DefaultVpcFinder:
+    Type: Custom::ResourceForFindingDefaultVpc
+    Properties:
+      ServiceToken: !GetAtt DefaultVpcLambda.Arn
+
+  StudioDomain:
+    Type: AWS::SageMaker::Domain
+    Properties: 
+      AppNetworkAccessType: PublicInternetOnly
+      AuthMode: IAM
+      DefaultUserSettings: 
+        ExecutionRole: !GetAtt SageMakerExecutionRole.Arn
+        StudioWebPortal: ENABLED
+        StudioWebPortalSettings:
+          HiddenAppTypes:
+            - Canvas
+            - JupyterServer # Studio Classic
+            - RStudioServerPro
+            - TensorBoard
+            - DetailedProfiler
+          HiddenMlTools:
+            - FeatureStore
+            - EmrClusters
+      DomainName: !Ref DomainName
+      SubnetIds: !GetAtt DefaultVpcFinder.Subnets
+      VpcId: !GetAtt DefaultVpcFinder.VpcId
+      DefaultSpaceSettings: 
+        ExecutionRole: !GetAtt SageMakerExecutionRole.Arn
+      Tags:
+        - Key: 'env'
+          Value: 'aws-bedrock-imd'
+        - Key: 'version'
+          Value: '1.0'
+
+
+  UserProfile:
+    Type: AWS::SageMaker::UserProfile
+    Properties: 
+      DomainId: !GetAtt StudioDomain.DomainId
+      UserProfileName: !Ref UserProfileName
+      UserSettings:
+        ExecutionRole: !GetAtt SageMakerExecutionRole.Arn
+      Tags:
+        - Key: 'env'
+          Value: 'aws-bedrock-imd'
+        - Key: 'version'
+          Value: '1.0'
+        - Key: 'user'
+          Value: !Ref UserProfileName
+
+  JupyterLabSpace:
+    Type: AWS::SageMaker::Space
+    DependsOn:
+      - UserProfile
+    Properties:
+      DomainId: !GetAtt StudioDomain.DomainId
+      SpaceName: !Ref SpaceName
+      SpaceSettings:
+        AppType: JupyterLab
+        SpaceStorageSettings:
+          EbsStorageSettings: 
+             EbsVolumeSizeInGb: 25
+        JupyterLabAppSettings:
+          DefaultResourceSpec: 
+            InstanceType: !FindInMap
+              - RegionMap
+              - !Ref "AWS::Region"
+              - instance
+            #SageMakerImageArn: !FindInMap
+            #  - RegionMap
+            #  - !Ref "AWS::Region"
+            #  - jupyter
+      SpaceSharingSettings:
+        SharingType: Private
+      OwnershipSettings:
+        OwnerUserProfileName: !Ref UserProfileName
+
+
+
+  ####################################################################################################################
+  #### LifeCycle Configuration to download notebooks
+  ####################################################################################################################
+
+  LifeCycleConfigLambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: !Sub 'LifeCycleConfigLambdaPolicy-${AWS::StackName}'
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'sagemaker:CreateStudioLifecycleConfig'
+                  - 'sagemaker:DeleteStudioLifecycleConfig'
+                Resource: !Sub 'arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:studio-lifecycle-config/*'
+              - Effect: Allow
+                Action:
+                  - 'sagemaker:UpdateUserProfile'
+                  - 'sagemaker:DeleteUserProfile'
+                Resource: !Sub 'arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:user-profile/*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: '*'
+
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  LifeCycleConfigLambda:
+    DependsOn:
+      - UserProfile
+      - LifeCycleConfigLambdaRole
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Description: Add LifeCycle Configuration to copy NB files to Studio
+      Handler: index.lambda_handler
+      Role: !GetAtt LifeCycleConfigLambdaRole.Arn
+      Runtime: python3.13
+      Timeout: 60
+      Code:
+        ZipFile: !Join
+          - |+
+
+          - - 'import boto3'
+            - 'import base64'
+            - 'import cfnresponse'
+            - ''
+            - 'client = boto3.client(''sagemaker'')'
+            - 'lcc_up1 = ''\n''.join(('
+            - '    ''#!/bin/bash'','
+            - '    '''','
+            - '    ''set -ex'','
+            - '    '''','
+            - '    ''if [ ! -z "${SM_JOB_DEF_VERSION}" ]'','
+            - '    ''then'','
+            - '    ''   echo "Running in job mode, skip lcc"'','
+            - '    ''else'','
+            - '    ''   git clone https://github.com/ealfcast/Multi-Agent-Collaboration.git'','
+            - '    ''   echo "Repo cloned from git"'','
+            - '    ''fi'','
+            - '    '''','
+            - '))'
+            - ''
+            - !Sub 'lcc_name_up1 = "${AWS::StackName}-copy-notebooks"'
+            - !Sub 'up1 = "${UserProfile}"'
+            - ''
+            - 'def get_lcc_base64_string(lcc_string):'
+            - '    lcc_bytes = lcc_string.encode("ascii")'
+            - '    base64_lcc_bytes = base64.b64encode(lcc_bytes)'
+            - '    base64_lcc_string = base64_lcc_bytes.decode("ascii")'
+            - '    return base64_lcc_string'
+            - ''
+            - ''
+            - 'def apply_lcc_to_user_profile(base64_lcc_string, lcc_config_name, profile):'
+            - '    response = client.create_studio_lifecycle_config('
+            - '        StudioLifecycleConfigName=lcc_config_name,'
+            - '        StudioLifecycleConfigContent=base64_lcc_string,'
+            - '        StudioLifecycleConfigAppType="JupyterLab",'
+            - '   )'
+            - ''
+            - '    lcc_arn = response["StudioLifecycleConfigArn"]'
+            - '    update_up = client.update_user_profile('
+            - '        DomainId=profile.split("|")[1],'
+            - '        UserProfileName=profile.split("|")[0],'
+            - '        UserSettings={'
+            - '            "JupyterLabAppSettings": {'
+            - '                "DefaultResourceSpec": {"LifecycleConfigArn": lcc_arn},'
+            - '                "LifecycleConfigArns": [lcc_arn]'
+            - '            }'
+            - '        }'
+            - '    )'
+            - '    return update_up'
+            - ''
+            - ''
+            - 'def lambda_handler(event, context):'
+            - '    print(event)'
+            - '    try:'
+            - '        base64_lcc_up1_string = get_lcc_base64_string(lcc_up1)'
+            - '        updated_up1 = apply_lcc_to_user_profile('
+            - '            base64_lcc_up1_string,'
+            - '            lcc_name_up1,'
+            - '            up1'
+            - '        )'
+            - '        print("Response User Profile LCC update for UP1")'
+            - '        print(updated_up1)'
+            - ''
+            - '        response_value = 120'
+            - '        response_data = {"Data": response_value}'
+            - '        cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)'
+            - '    except Exception as e:'
+            - '        if "RequestType" in event:'
+            - '            if event["RequestType"] == "Delete":'
+            - '                try:'
+            - '                    response1 = client.delete_studio_lifecycle_config('
+            - '                        StudioLifecycleConfigName=lcc_name_up1'
+            - '                    )'
+            - '                    print(response1)'
+            - '                    response_data = {}'
+            - '                    cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)'
+            - '                    return'
+            - '                except Exception as e2:'
+            - '                    print(e2)'
+            - '                    response_data = e2'
+            - '                    cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)'
+            - '                    return'
+            - '        print(e)'
+            - '        response_data = {"Data": str(e)}'
+            - '        cfnresponse.send(event, context, cfnresponse.FAILED, response_data)'
+
+  LifeCycleConfigLambdaInvoke:
+    Type: AWS::CloudFormation::CustomResource
+    DependsOn: LifeCycleConfigLambda
+    Version: "1.0"
+    Properties:
+      ServiceToken: !GetAtt LifeCycleConfigLambda.Arn
+
+Outputs:
+    GuardrailId:
+      Description: The ID for the Guardrail
+      Value: !GetAtt ExampleGuardrail.GuardrailId
+    PolicyArn:
+      Description: The ID for the Auto Policy Contract
+      Value: !GetAtt ExampleAutoPolicyContractPolicy.PolicyArn
+    PolicyId:
+      Description: The ID for the Auto Policy Contract
+      Value: !GetAtt ExampleAutoPolicyContractPolicy.PolicyId
+    PolicyVersion:
+      Description: The Version for the Auto Policy Contract
+      Value: !GetAtt ExampleAutoPolicyContractPolicyVersion.Version
