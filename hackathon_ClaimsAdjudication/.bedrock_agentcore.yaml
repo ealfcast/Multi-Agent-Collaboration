@@ -1,4 +1,4 @@
-default_agent: fnol_assistant
+default_agent: aws_appraisal_assistant
 agents:
   aws_appraisal_assistant:
     name: aws_appraisal_assistant
@@ -39,8 +39,8 @@ agents:
     authorizer_configuration:
       customJWTAuthorizer:
         allowedClients:
-        - 1gssagevr5hbqdbvasf6999n8d
-        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_jfuv4Cp36/.well-known/openid-configuration
+        - 1kj4kogs75o20rlg39jdbmicbk
+        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_YRuZZSrZ2/.well-known/openid-configuration
     request_header_configuration: null
     oauth_configuration: null
   settlement_assistant:
@@ -125,7 +125,7 @@ agents:
     authorizer_configuration:
       customJWTAuthorizer:
         allowedClients:
-        - nott2bang2m0bmfg2s7u5a407
-        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_ZQm4mMxAq/.well-known/openid-configuration
+        - lvtqsjob9v52n2g2lnqslngfv
+        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_uTcFNGedu/.well-known/openid-configuration
     request_header_configuration: null
     oauth_configuration: null

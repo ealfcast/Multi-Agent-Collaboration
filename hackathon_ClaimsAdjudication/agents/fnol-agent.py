@@ -59,6 +59,7 @@ model = BedrockModel(
 # Create FNOL Processing Agent
 fnol_agent = Agent(
     name="FNOL Data Extraction Specialist",
+    description="Intelligent agent for automated auto insurance claims FNOL processing",
     model=model,
     system_prompt="""You are a Claims Data Extraction Specialist.
 
@@ -85,16 +86,10 @@ ERROR HANDLING: If form is illegible or severely incomplete, flag for manual rev
 
 QUALITY CHECK: Ensure all extracted monetary amounts, dates, and identifiers are properly formatted.
 
-OUTPUT FORMAT: Return a structured JSON object with the following sections:
-- extraction_metadata: Processing date, data quality score, completeness status
-- claim_information: Claim number, report date, policy number
-- policyholder_information: Name, contact details, driver license
-- incident_details: Date, time, location, description, weather conditions
-- vehicle_information: Insured vehicle details, damage assessment
-- other_parties: Information about other drivers/vehicles involved
-- injuries: Details of any injuries reported
-- validation_results: List of any missing fields, inconsistencies, or data quality issues
-- recommendations: Next steps or follow-up actions needed
+OUTPUT FORMAT: 
+Return the same structured JSON object provided in the input:
+
+Return, in a separete section, the list recommendations: Next steps or follow-up actions needed
 """
 )
 
@@ -108,7 +103,7 @@ runtime_url = os.environ.get('AGENTCORE_RUNTIME_URL', 'http://127.0.0.1:9000/')
 host, port = "0.0.0.0", 9000
 
 a2a_server = A2AServer(
-    agent=settlement_agent,
+    agent=fnol_agent,
     http_url=runtime_url,
     serve_at_root=True,
     

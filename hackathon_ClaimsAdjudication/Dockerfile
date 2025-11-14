@@ -9,8 +9,8 @@ ENV UV_SYSTEM_PYTHON=1 \
     DOCKER_CONTAINER=1 \
     AWS_REGION=us-east-1 \
     AWS_DEFAULT_REGION=us-east-1 \
-    BEDROCK_AGENTCORE_MEMORY_ID=fnol_assistant_mem-iRbWou4Ycz \
-    BEDROCK_AGENTCORE_MEMORY_NAME=fnol_assistant_mem
+    BEDROCK_AGENTCORE_MEMORY_ID=aws_appraisal_assistant_mem-mbe9Un7lF8 \
+    BEDROCK_AGENTCORE_MEMORY_NAME=aws_appraisal_assistant_mem
 
 
 
@@ -40,4 +40,4 @@ COPY . .
 
 # Use the full module path
 
-CMD ["opentelemetry-instrument", "python", "-m", "agents.fnol-agent"]
+CMD ["opentelemetry-instrument", "python", "-m", "agents.appraisal-agent"]
