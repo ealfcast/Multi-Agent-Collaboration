@@ -27,22 +27,20 @@ REGION = boto3.session.Session().region_name
 
 USERNAME = "testuser"
 SECRET_NAME = "aws_docs_assistant"
-SSM_SETTLEMENT_AGENT_ROLE_ARN = (
+SSM_DOCS_AGENT_ROLE_ARN = (
     "/app/aws_docs_assistant/agentcore/runtime_execution_role_arn"
 )
 POLICY_NAME = f"AWSDocsAssistantBedrockAgentCorePolicy-{REGION}"
 LOG_GROUP_BASE_NAME = "/aws/bedrock-agentcore/runtimes/"
 
-SSM_SETTLEMENT_AGENT_ARN = "/app/aws_settlement_assistant/agentcore/agent_arn"
-SSM_APPRAISAL_AGENT_ARN = "/app/aws_blogs_assistant/agentcore/agent_arn"
-SSM_FNOL_AGENT_ARN = "/app/aws_fnol_assistant/agentcore/agent_arn"
-SSM_CLAIMSVALIDATION_AGENT_ARN = "/app/aws_claimsvalidation_assistant/agentcore/agent_arn"
+SSM_DOCS_AGENT_ARN = "/app/aws_docs_assistant/agentcore/agent_arn"
+SSM_BLOGS_AGENT_ARN = "/app/aws_blogs_assistant/agentcore/agent_arn"
 
-AWS_SETTLEMENT_ROLE_NAME = f"AWSDocsAssistantBedrockAgentCoreRole-{REGION}"
-AWS_APPRAISAL_ROLE_NAME = f"AWSBlogsAssistantBedrockAgentCoreRole-{REGION}"
+AWS_DOCS_ROLE_NAME = f"AWSDocsAssistantBedrockAgentCoreRole-{REGION}"
+AWS_BLOG_ROLE_NAME = f"AWSBlogsAssistantBedrockAgentCoreRole-{REGION}"
 ORCHESTRATOR_ROLE_NAME = f"AWSOrchestratorAssistantAgentCoreRole-{REGION}"
-AWS_FNOL_ROLE_NAME = f"AWSFNOLAssistantBedrockAgentCoreRole-{REGION}"
-AWS_CLAIMSVALIDATION_ROLE_NAME =  f"AWSClaimsValidationAssistantBedrockAgentCoreRole-{REGION}"
+AWS_FINANCIAL_ANALYSIS_ROLE_NAME = f"AWSFinancialAnalysisAssistantAgentCoreRole-{REGION}"
+AWS_RISK_ANALYSIS_ROLE_NAME = f"AWSRiskAnalysisAssistantAgentCoreRole-{REGION}"
 
 
 # General functions
@@ -567,7 +565,7 @@ def delete_agentcore_runtime_execution_role(role_name: str) -> None:
         except iam.exceptions.ClientError:
             pass
 
-        delete_ssm_parameter(SSM_SETTLEMENT_AGENT_ROLE_ARN)
+        delete_ssm_parameter(SSM_DOCS_AGENT_ROLE_ARN)
 
     except iam.exceptions.ClientError as e:
         print(f"❌ Error during cleanup: {str(e)}")

@@ -36,11 +36,13 @@ LOG_GROUP_BASE_NAME = "/aws/bedrock-agentcore/runtimes/"
 SSM_SETTLEMENT_AGENT_ARN = "/app/aws_settlement_assistant/agentcore/agent_arn"
 SSM_APPRAISAL_AGENT_ARN = "/app/aws_blogs_assistant/agentcore/agent_arn"
 SSM_FNOL_AGENT_ARN = "/app/aws_fnol_assistant/agentcore/agent_arn"
+SSM_CLAIMSVALIDATION_AGENT_ARN = "/app/aws_claimsvalidation_assistant/agentcore/agent_arn"
 
 AWS_SETTLEMENT_ROLE_NAME = f"AWSDocsAssistantBedrockAgentCoreRole-{REGION}"
 AWS_APPRAISAL_ROLE_NAME = f"AWSBlogsAssistantBedrockAgentCoreRole-{REGION}"
 ORCHESTRATOR_ROLE_NAME = f"AWSOrchestratorAssistantAgentCoreRole-{REGION}"
 AWS_FNOL_ROLE_NAME = f"AWSFNOLAssistantBedrockAgentCoreRole-{REGION}"
+AWS_CLAIMSVALIDATION_ROLE_NAME =  f"AWSClaimsValidationAssistantBedrockAgentCoreRole-{REGION}"
 
 
 # General functions

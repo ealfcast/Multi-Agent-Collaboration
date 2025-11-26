@@ -9,8 +9,8 @@ ENV UV_SYSTEM_PYTHON=1 \
     DOCKER_CONTAINER=1 \
     AWS_REGION=us-east-1 \
     AWS_DEFAULT_REGION=us-east-1 \
-    BEDROCK_AGENTCORE_MEMORY_ID=aws_claimvalidation_assistant_mem-J7Hg4Z84cG \
-    BEDROCK_AGENTCORE_MEMORY_NAME=aws_claimvalidation_assistant_mem
+    BEDROCK_AGENTCORE_MEMORY_ID=aws_financial_assistant_mem-12Pj9K8K9q \
+    BEDROCK_AGENTCORE_MEMORY_NAME=aws_financial_assistant_mem
 
 
 
@@ -40,4 +40,4 @@ COPY . .
 
 # Use the full module path
 
-CMD ["opentelemetry-instrument", "python", "-m", "agents.claimvalidation-agent"]
+CMD ["opentelemetry-instrument", "python", "-m", "agents.financial_analysis_agent"]
