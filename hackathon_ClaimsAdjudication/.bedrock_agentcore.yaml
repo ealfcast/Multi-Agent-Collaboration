@@ -131,12 +131,12 @@ agents:
     oauth_configuration: null
   aws_claimvalidation_assistant:
     name: aws_claimvalidation_assistant
-    entrypoint: /home/sagemaker-user/Multi-Agent-Collaboration/hackathon_ClaimsAdjudication/agents/claimvalidation-agent.py
+    entrypoint: /home/sagemaker-user/Multi-Agent-Collaboration/hackathon_ClaimsAdjudication/agents/claimvalidation-agent-3.py
     platform: linux/arm64
     container_runtime: none
     source_path: null
     aws:
-      execution_role: arn:aws:iam::161615149547:role/AWSClaimsValidationAssistantBedrockAgentCoreRole-us-east-1
+      execution_role: arn:aws:iam::161615149547:role/AmazonBedrockAgentCoreSDKRuntime-us-east-1-1db4e090aa
       execution_role_auto_create: false
       account: '161615149547'
       region: us-east-1
@@ -146,13 +146,13 @@ agents:
         network_mode: PUBLIC
         network_mode_config: null
       protocol_configuration:
-        server_protocol: A2A
+        server_protocol: HTTP
       observability:
         enabled: true
     bedrock_agentcore:
       agent_id: aws_claimvalidation_assistant-JahQJ5DGNQ
       agent_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:runtime/aws_claimvalidation_assistant-JahQJ5DGNQ
-      agent_session_id: null
+      agent_session_id: 9093fc8f-324d-4672-b722-e977fb39232c
     codebuild:
       project_name: bedrock-agentcore-aws_claimvalidation_assistant-builder
       execution_role: arn:aws:iam::161615149547:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-1db4e090aa
@@ -163,12 +163,51 @@ agents:
       memory_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:memory/aws_claimvalidation_assistant_mem-J7Hg4Z84cG
       memory_name: aws_claimvalidation_assistant_mem
       event_expiry_days: 30
+      first_invoke_memory_check_done: true
+      was_created_by_toolkit: false
+    authorizer_configuration: null
+    request_header_configuration: null
+    oauth_configuration: null
+  validation_assistant:
+    name: validation_assistant
+    entrypoint: /home/sagemaker-user/Multi-Agent-Collaboration/hackathon_ClaimsAdjudication/agents/claimvalidation-agent-2.py
+    platform: linux/arm64
+    container_runtime: none
+    source_path: null
+    aws:
+      execution_role: arn:aws:iam::161615149547:role/AWSFNOLAssistantBedrockAgentCoreRole-us-east-1
+      execution_role_auto_create: false
+      account: '161615149547'
+      region: us-east-1
+      ecr_repository: 161615149547.dkr.ecr.us-east-1.amazonaws.com/bedrock-agentcore-validation_assistant
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: A2A
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: validation_assistant-BpVgjG6ICV
+      agent_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:runtime/validation_assistant-BpVgjG6ICV
+      agent_session_id: null
+    codebuild:
+      project_name: bedrock-agentcore-validation_assistant-builder
+      execution_role: arn:aws:iam::161615149547:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-fc6456f075
+      source_bucket: bedrock-agentcore-codebuild-sources-161615149547-us-east-1
+    memory:
+      mode: STM_ONLY
+      memory_id: validation_assistant_mem-ANSzlKEKLF
+      memory_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:memory/validation_assistant_mem-ANSzlKEKLF
+      memory_name: validation_assistant_mem
+      event_expiry_days: 30
       first_invoke_memory_check_done: false
       was_created_by_toolkit: false
     authorizer_configuration:
       customJWTAuthorizer:
         allowedClients:
-        - 1mb9je4ocff1v1qg1jr3aj8auh
-        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_teixunxJ0/.well-known/openid-configuration
+        - ftjv7dm96qf84cc4n245krvt8
+        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_JkqGFEXTz/.well-known/openid-configuration
     request_header_configuration: null
     oauth_configuration: null

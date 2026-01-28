@@ -1,8 +1,9 @@
+
 import os
 import logging
 import asyncio
 from mcp import stdio_client, StdioServerParameters
-from strands import Agent
+from strands import Agent, tool
 from strands.models import BedrockModel
 from strands.tools import tool
 from strands.multiagent.a2a import A2AServer
@@ -10,6 +11,7 @@ from strands.tools.mcp import MCPClient
 import argparse
 from fastapi import FastAPI
 import uvicorn
+
 from strands.hooks import HookProvider, HookRegistry, MessageAddedEvent, BeforeModelCallEvent, BeforeToolCallEvent
 from pydantic import BaseModel
 from botocore.config import Config as BotocoreConfig
@@ -23,28 +25,28 @@ from datetime import datetime
 
 # AWS SDK
 import boto3
+from typing import Dict, Any, List
+from dataclasses import dataclass
 
 from ddgs import DDGS
 from ddgs.exceptions import RatelimitException, DDGSException
 
 
 
+print("✓ All dependencies imported successfully")
+
+
+
 # Configure the root strands logger
-# logging.getLogger("strands").setLevel(logging.DEBUG)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-# Add a handler to see the logs
-# logging.basicConfig(
-#     format="%(levelname)s | %(name)s | %(message)s", 
-#     handlers=[logging.StreamHandler()]
-# )
 
 # Setup tracing - commented out for now as this adds a lot of trace output that really isn't interesting
 StrandsTelemetry().setup_console_exporter()
 
 # NOTE: To send the OTEL data to an ADOT collector, additional exporter needs to be used
+
+
 
 
 
@@ -61,6 +63,9 @@ bedrock_client = boto3.client(
 
 print(f"✓ AWS Bedrock configured for region: {AWS_REGION}")
 print(f"✓ Using model: {MODEL_ID}")
+
+
+
 
 # Supply the pre-installed polciy and guardrail IDs
 ARC_POLICY_ARN = "arn:aws:bedrock:us-east-1:161615149547:automated-reasoning-policy/malxiyr0ojy2"
@@ -174,6 +179,9 @@ class StructuredOutputModel(BaseModel):
     content: str
     findings: str
 
+
+
+
 # Provide the config for botocore
 boto_config = BotocoreConfig(
     retries={"max_attempts": 3, "mode": "standard"},
@@ -181,10 +189,13 @@ boto_config = BotocoreConfig(
     read_timeout=60
 )
 
+
 # Create a Bedrock model with guardrail configuration
 bedrock_model = BedrockModel(
     boto_client_config=boto_config,
-    model_id=MODEL_ID,
+    # model_id=MODEL_ID,
+    model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
+    region_name="us-east-1"
     # NOTE: An alternative option is to supply the guardrail here.  If going that route, the ARc findings aren't present.
     # To ensure that the findings are present and can be used to re-write the output, rely on a hook
 )
@@ -216,6 +227,9 @@ agent = Agent(
     tools=[retrieve],
     system_prompt=agent_instructions
 )
+
+
+print("Claims Validation Processing Agent created")
 
 
 

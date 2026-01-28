@@ -40,4 +40,4 @@ COPY . .
 
 # Use the full module path
 
-CMD ["opentelemetry-instrument", "python", "-m", "agents.claimvalidation-agent"]
+CMD ["opentelemetry-instrument", "python", "-m", "agents.claimvalidation-agent-3"]

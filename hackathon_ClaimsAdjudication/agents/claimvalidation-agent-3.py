@@ -2,7 +2,7 @@ import os
 import logging
 import asyncio
 from mcp import stdio_client, StdioServerParameters
-from strands import Agent
+from strands import Agent, tool
 from strands.models import BedrockModel
 from strands.tools import tool
 from strands.multiagent.a2a import A2AServer
@@ -16,6 +16,7 @@ from botocore.config import Config as BotocoreConfig
 from strands.telemetry import StrandsTelemetry
 from findings_utils import extract_reasoning_findings
 from strands_tools import retrieve
+from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 # Standard library imports
 import json
@@ -23,6 +24,13 @@ from datetime import datetime
 
 # AWS SDK
 import boto3
+import requests
+import time
+from boto3.session import Session
+
+
+# Get boto session
+boto_session = Session()
 
 from ddgs import DDGS
 from ddgs.exceptions import RatelimitException, DDGSException
@@ -34,13 +42,6 @@ from ddgs.exceptions import RatelimitException, DDGSException
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-# Add a handler to see the logs
-# logging.basicConfig(
-#     format="%(levelname)s | %(name)s | %(message)s", 
-#     handlers=[logging.StreamHandler()]
-# )
-
 # Setup tracing - commented out for now as this adds a lot of trace output that really isn't interesting
 StrandsTelemetry().setup_console_exporter()
 
@@ -48,19 +49,19 @@ StrandsTelemetry().setup_console_exporter()
 
 
 
-
 # AWS Configuration
-AWS_REGION = "us-east-1"
-MODEL_ID = "anthropic.claude-sonnet-4-5-20250929-v1:0"
+# AWS_REGION = "us-east-1"
+# MODEL_ID = "anthropic.claude-sonnet-4-5-20250929-v1:0"
+# MODEL_ID = "us.anthropic.claude-sonnet-4-20250514-v1:0"
 
 # Initialize Bedrock client to verify connectivity
-bedrock_client = boto3.client(
-    service_name="bedrock-runtime",
-    region_name=AWS_REGION
-)
+# bedrock_client = boto3.client(
+#     service_name="bedrock-runtime",
+#     region_name=AWS_REGION
+# )
 
-print(f"✓ AWS Bedrock configured for region: {AWS_REGION}")
-print(f"✓ Using model: {MODEL_ID}")
+# print(f"✓ AWS Bedrock configured for region: {AWS_REGION}")
+# print(f"✓ Using model: {MODEL_ID}")
 
 # Supply the pre-installed polciy and guardrail IDs
 ARC_POLICY_ARN = "arn:aws:bedrock:us-east-1:161615149547:automated-reasoning-policy/malxiyr0ojy2"
@@ -69,7 +70,7 @@ GUARDRAIL_VERSION = "4"
 KNOWLEDGE_BASE_ID = "CZDJXI9C4E"
 # NOTE: the default model for Strands is us.anthropic.claude-sonnet-4-20250514-v1:0
 # MODEL_ID = "us.amazon.nova-lite-v1:0"
-# MODEL_ID = "us.anthropic.claude-sonnet-4-20250514-v1:0"
+MODEL_ID = "us.anthropic.claude-sonnet-4-20250514-v1:0"
 
 
 # Setup the environment for the agent and tool
@@ -217,34 +218,49 @@ agent = Agent(
     system_prompt=agent_instructions
 )
 
+####### Agent Core ##################
+app = BedrockAgentCoreApp()
 
-
-################# A2A ################
-app = FastAPI()
-runtime_url = os.environ.get('AGENTCORE_RUNTIME_URL', 'http://127.0.0.1:9000/')
-host, port = "0.0.0.0", 9000
-
-a2a_server = A2AServer(
-    agent=agent,
-    http_url=runtime_url,
-    serve_at_root=True,
-    
-)
-
-@app.get("/ping")
-def ping():
-    return {"status": "healthy"}
-
-# @app.on_event("startup")
-# async def startup_event():
-#     """Initialize MCP client on startup"""
-#     await setup_agent_tools()
-
-app.mount("/", a2a_server.to_fastapi_app())
-
-
+@app.entrypoint
+def strands_agent_bedrock(payload):
+    """
+    Invoke the agent with a payload
+    """
+    user_input = payload.get("prompt")
+    print("User input:", user_input)
+    response = agent(user_input)
+    return response.message['content'][0]['text']
 
 if __name__ == "__main__":
-    uvicorn.run(app, host=host, port=port)
+    app.run()
+####### Agent Core ##################
+
+################# A2A ################
+# app = FastAPI()
+# runtime_url = os.environ.get('AGENTCORE_RUNTIME_URL', 'http://127.0.0.1:9000/')
+# host, port = "0.0.0.0", 9000
+
+# a2a_server = A2AServer(
+#     agent=agent,
+#     http_url=runtime_url,
+#     serve_at_root=True,
+    
+# )
+
+# @app.get("/ping")
+# def ping():
+#     return {"status": "healthy"}
+
+# # @app.on_event("startup")
+# # async def startup_event():
+# #     """Initialize MCP client on startup"""
+# #     await setup_agent_tools()
+
+# app.mount("/", a2a_server.to_fastapi_app())
+
+
+
+# if __name__ == "__main__":
+#     uvicorn.run(app, host=host, port=port)
 
 ################# A2A ################

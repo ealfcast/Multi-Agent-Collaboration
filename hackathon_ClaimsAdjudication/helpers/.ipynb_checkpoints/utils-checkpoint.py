@@ -30,6 +30,9 @@ SECRET_NAME = "aws_docs_assistant"
 SSM_SETTLEMENT_AGENT_ROLE_ARN = (
     "/app/aws_docs_assistant/agentcore/runtime_execution_role_arn"
 )
+SSM_DOCS_AGENT_ROLE_ARN = (
+    "/app/aws_docs_assistant/agentcore/runtime_execution_role_arn"
+)
 POLICY_NAME = f"AWSDocsAssistantBedrockAgentCorePolicy-{REGION}"
 LOG_GROUP_BASE_NAME = "/aws/bedrock-agentcore/runtimes/"
 
@@ -567,7 +570,7 @@ def delete_agentcore_runtime_execution_role(role_name: str) -> None:
         except iam.exceptions.ClientError:
             pass
 
-        delete_ssm_parameter(SSM_SETTLEMENT_AGENT_ROLE_ARN)
+        delete_ssm_parameter(SSM_DOCS_AGENT_ROLE_ARN)
 
     except iam.exceptions.ClientError as e:
         print(f"❌ Error during cleanup: {str(e)}")
