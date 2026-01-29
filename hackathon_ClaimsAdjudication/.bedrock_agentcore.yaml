@@ -1,0 +1,213 @@
+default_agent: aws_claimvalidation_assistant
+agents:
+  aws_appraisal_assistant:
+    name: aws_appraisal_assistant
+    entrypoint: /home/sagemaker-user/Multi-Agent-Collaboration/hackathon_ClaimsAdjudication/agents/appraisal-agent.py
+    platform: linux/arm64
+    container_runtime: none
+    source_path: null
+    aws:
+      execution_role: arn:aws:iam::161615149547:role/AWSBlogsAssistantBedrockAgentCoreRole-us-east-1
+      execution_role_auto_create: false
+      account: '161615149547'
+      region: us-east-1
+      ecr_repository: 161615149547.dkr.ecr.us-east-1.amazonaws.com/bedrock-agentcore-aws_appraisal_assistant
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: A2A
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: aws_appraisal_assistant-vUe2p2FZfq
+      agent_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:runtime/aws_appraisal_assistant-vUe2p2FZfq
+      agent_session_id: null
+    codebuild:
+      project_name: bedrock-agentcore-aws_appraisal_assistant-builder
+      execution_role: arn:aws:iam::161615149547:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-09b58e53de
+      source_bucket: bedrock-agentcore-codebuild-sources-161615149547-us-east-1
+    memory:
+      mode: STM_ONLY
+      memory_id: aws_appraisal_assistant_mem-mbe9Un7lF8
+      memory_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:memory/aws_appraisal_assistant_mem-mbe9Un7lF8
+      memory_name: aws_appraisal_assistant_mem
+      event_expiry_days: 30
+      first_invoke_memory_check_done: false
+      was_created_by_toolkit: false
+    authorizer_configuration:
+      customJWTAuthorizer:
+        allowedClients:
+        - 1kj4kogs75o20rlg39jdbmicbk
+        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_YRuZZSrZ2/.well-known/openid-configuration
+    request_header_configuration: null
+    oauth_configuration: null
+  settlement_assistant:
+    name: settlement_assistant
+    entrypoint: /home/sagemaker-user/Multi-Agent-Collaboration/hackathon_ClaimsAdjudication/agents/settlement-agent.py
+    platform: linux/arm64
+    container_runtime: none
+    source_path: null
+    aws:
+      execution_role: arn:aws:iam::161615149547:role/AWSDocsAssistantBedrockAgentCoreRole-us-east-1
+      execution_role_auto_create: false
+      account: '161615149547'
+      region: us-east-1
+      ecr_repository: 161615149547.dkr.ecr.us-east-1.amazonaws.com/bedrock-agentcore-settlement_assistant
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: A2A
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: settlement_assistant-3t3GvOE7iu
+      agent_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:runtime/settlement_assistant-3t3GvOE7iu
+      agent_session_id: null
+    codebuild:
+      project_name: bedrock-agentcore-settlement_assistant-builder
+      execution_role: arn:aws:iam::161615149547:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-388ccdee1d
+      source_bucket: bedrock-agentcore-codebuild-sources-161615149547-us-east-1
+    memory:
+      mode: STM_ONLY
+      memory_id: settlement_assistant_mem-O5FbW18Zxl
+      memory_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:memory/settlement_assistant_mem-O5FbW18Zxl
+      memory_name: settlement_assistant_mem
+      event_expiry_days: 30
+      first_invoke_memory_check_done: false
+      was_created_by_toolkit: false
+    authorizer_configuration:
+      customJWTAuthorizer:
+        allowedClients:
+        - 2meg59a3s27qan0obh7bp5go7u
+        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_K101vl1qr/.well-known/openid-configuration
+    request_header_configuration: null
+    oauth_configuration: null
+  fnol_assistant:
+    name: fnol_assistant
+    entrypoint: /home/sagemaker-user/Multi-Agent-Collaboration/hackathon_ClaimsAdjudication/agents/fnol-agent.py
+    platform: linux/arm64
+    container_runtime: none
+    source_path: null
+    aws:
+      execution_role: arn:aws:iam::161615149547:role/AWSFNOLAssistantBedrockAgentCoreRole-us-east-1
+      execution_role_auto_create: false
+      account: '161615149547'
+      region: us-east-1
+      ecr_repository: 161615149547.dkr.ecr.us-east-1.amazonaws.com/bedrock-agentcore-fnol_assistant
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: A2A
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: fnol_assistant-MRDFkp2mkG
+      agent_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:runtime/fnol_assistant-MRDFkp2mkG
+      agent_session_id: null
+    codebuild:
+      project_name: bedrock-agentcore-fnol_assistant-builder
+      execution_role: arn:aws:iam::161615149547:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-93ed08f116
+      source_bucket: bedrock-agentcore-codebuild-sources-161615149547-us-east-1
+    memory:
+      mode: STM_ONLY
+      memory_id: fnol_assistant_mem-iRbWou4Ycz
+      memory_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:memory/fnol_assistant_mem-iRbWou4Ycz
+      memory_name: fnol_assistant_mem
+      event_expiry_days: 30
+      first_invoke_memory_check_done: false
+      was_created_by_toolkit: false
+    authorizer_configuration:
+      customJWTAuthorizer:
+        allowedClients:
+        - lvtqsjob9v52n2g2lnqslngfv
+        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_uTcFNGedu/.well-known/openid-configuration
+    request_header_configuration: null
+    oauth_configuration: null
+  aws_claimvalidation_assistant:
+    name: aws_claimvalidation_assistant
+    entrypoint: /home/sagemaker-user/Multi-Agent-Collaboration/hackathon_ClaimsAdjudication/agents/claimvalidation-agent-3.py
+    platform: linux/arm64
+    container_runtime: none
+    source_path: null
+    aws:
+      execution_role: arn:aws:iam::161615149547:role/AmazonBedrockAgentCoreSDKRuntime-us-east-1-1db4e090aa
+      execution_role_auto_create: false
+      account: '161615149547'
+      region: us-east-1
+      ecr_repository: 161615149547.dkr.ecr.us-east-1.amazonaws.com/bedrock-agentcore-aws_claimvalidation_assistant
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: HTTP
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: aws_claimvalidation_assistant-JahQJ5DGNQ
+      agent_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:runtime/aws_claimvalidation_assistant-JahQJ5DGNQ
+      agent_session_id: 9093fc8f-324d-4672-b722-e977fb39232c
+    codebuild:
+      project_name: bedrock-agentcore-aws_claimvalidation_assistant-builder
+      execution_role: arn:aws:iam::161615149547:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-1db4e090aa
+      source_bucket: bedrock-agentcore-codebuild-sources-161615149547-us-east-1
+    memory:
+      mode: STM_ONLY
+      memory_id: aws_claimvalidation_assistant_mem-J7Hg4Z84cG
+      memory_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:memory/aws_claimvalidation_assistant_mem-J7Hg4Z84cG
+      memory_name: aws_claimvalidation_assistant_mem
+      event_expiry_days: 30
+      first_invoke_memory_check_done: true
+      was_created_by_toolkit: false
+    authorizer_configuration: null
+    request_header_configuration: null
+    oauth_configuration: null
+  validation_assistant:
+    name: validation_assistant
+    entrypoint: /home/sagemaker-user/Multi-Agent-Collaboration/hackathon_ClaimsAdjudication/agents/claimvalidation-agent-2.py
+    platform: linux/arm64
+    container_runtime: none
+    source_path: null
+    aws:
+      execution_role: arn:aws:iam::161615149547:role/AWSFNOLAssistantBedrockAgentCoreRole-us-east-1
+      execution_role_auto_create: false
+      account: '161615149547'
+      region: us-east-1
+      ecr_repository: 161615149547.dkr.ecr.us-east-1.amazonaws.com/bedrock-agentcore-validation_assistant
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: A2A
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: validation_assistant-BpVgjG6ICV
+      agent_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:runtime/validation_assistant-BpVgjG6ICV
+      agent_session_id: null
+    codebuild:
+      project_name: bedrock-agentcore-validation_assistant-builder
+      execution_role: arn:aws:iam::161615149547:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-fc6456f075
+      source_bucket: bedrock-agentcore-codebuild-sources-161615149547-us-east-1
+    memory:
+      mode: STM_ONLY
+      memory_id: validation_assistant_mem-ANSzlKEKLF
+      memory_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:memory/validation_assistant_mem-ANSzlKEKLF
+      memory_name: validation_assistant_mem
+      event_expiry_days: 30
+      first_invoke_memory_check_done: false
+      was_created_by_toolkit: false
+    authorizer_configuration:
+      customJWTAuthorizer:
+        allowedClients:
+        - ftjv7dm96qf84cc4n245krvt8
+        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_JkqGFEXTz/.well-known/openid-configuration
+    request_header_configuration: null
+    oauth_configuration: null

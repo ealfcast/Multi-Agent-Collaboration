@@ -1,0 +1,45 @@
+default_agent: aws_financial_assistant
+agents:
+  aws_financial_assistant:
+    name: aws_financial_assistant
+    entrypoint: /home/sagemaker-user/Multi-Agent-Collaboration/graph_IntelligentLoanUnderwriting/agents/financial_analysis_agent.py
+    platform: linux/arm64
+    container_runtime: none
+    source_path: null
+    aws:
+      execution_role: arn:aws:iam::161615149547:role/AWSFinancialAnalysisBedrockAgentCoreRole-us-east-1
+      execution_role_auto_create: false
+      account: '161615149547'
+      region: us-east-1
+      ecr_repository: 161615149547.dkr.ecr.us-east-1.amazonaws.com/bedrock-agentcore-aws_financial_assistant
+      ecr_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: A2A
+      observability:
+        enabled: true
+    bedrock_agentcore:
+      agent_id: aws_financial_assistant-Sv0Z6Z7Y1F
+      agent_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:runtime/aws_financial_assistant-Sv0Z6Z7Y1F
+      agent_session_id: null
+    codebuild:
+      project_name: bedrock-agentcore-aws_financial_assistant-builder
+      execution_role: arn:aws:iam::161615149547:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-e051eb5ff4
+      source_bucket: bedrock-agentcore-codebuild-sources-161615149547-us-east-1
+    memory:
+      mode: STM_ONLY
+      memory_id: aws_financial_assistant_mem-12Pj9K8K9q
+      memory_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:memory/aws_financial_assistant_mem-12Pj9K8K9q
+      memory_name: aws_financial_assistant_mem
+      event_expiry_days: 30
+      first_invoke_memory_check_done: false
+      was_created_by_toolkit: false
+    authorizer_configuration:
+      customJWTAuthorizer:
+        allowedClients:
+        - 2i7541qk8ididv8qjsuc1nvif1
+        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_XTm9OXIB7/.well-known/openid-configuration
+    request_header_configuration: null
+    oauth_configuration: null
