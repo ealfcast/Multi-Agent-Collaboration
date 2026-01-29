@@ -2,9 +2,14 @@ boto3
 botocore
 strands-agents
 strands-agents-tools
+bedrock-agentcore-starter-toolkit
 PyYAML
 PyPDF2
 opentelemetry-sdk
 opentelemetry-exporter-otlp
 opentelemetry-instrumentation-boto
 opentelemetry-sdk-extension-aws
+pydantic 
+httpx
+fastapi
+uvicorn[standard]
