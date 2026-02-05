@@ -438,6 +438,7 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                     "bedrock:InvokeModel",
                     "bedrock:InvokeModelWithResponseStream",
                     "bedrock:ApplyGuardrail",
+                    "bedrock:*AutomatedReasoningPolicy*",
                     "bedrock:Retrieve",
                 ],
                 "Resource": [
