@@ -447,6 +447,16 @@ def create_agentcore_runtime_execution_role(role_name: str) -> Optional[str]:
                 ],
             },
             {
+                "Sid": "BedrockArc",
+                "Effect": "Allow",
+                "Action": [
+                    "bedrock:ExportAutomatedReasoningPolicyVersion"
+                ],
+                "Resource": [
+                    f"arn:aws:bedrock:{region}:{account_id}:automated-reasoning-policy/*"
+                ]
+            },
+            {
                 "Sid": "AllowAgentToUseMemory",
                 "Effect": "Allow",
                 "Action": [
