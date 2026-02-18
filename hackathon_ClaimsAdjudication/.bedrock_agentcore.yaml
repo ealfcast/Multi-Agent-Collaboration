@@ -1,4 +1,4 @@
-default_agent: fnol_assistant
+default_agent: A2A_ARC_claimvalidation
 agents:
   aws_appraisal_assistant:
     name: aws_appraisal_assistant
@@ -375,6 +375,70 @@ agents:
       issuer_url: null
       duration_seconds: 300
     authorizer_configuration: null
+    request_header_configuration: null
+    oauth_configuration: null
+    api_key_env_var_name: null
+    api_key_credential_provider_name: null
+    is_generated_by_agentcore_create: false
+  A2A_ARC_claimvalidation:
+    name: A2A_ARC_claimvalidation
+    language: python
+    node_version: null
+    entrypoint: /home/sagemaker-user/Multi-Agent-Collaboration/hackathon_ClaimsAdjudication/agents/claimvalidation-agent.py
+    deployment_type: container
+    runtime_type: null
+    platform: linux/arm64
+    container_runtime: none
+    source_path: null
+    aws:
+      execution_role: arn:aws:iam::161615149547:role/AWSClaimsValidationAssistantBedrockAgentCoreRole-us-east-1
+      execution_role_auto_create: false
+      account: '161615149547'
+      region: us-east-1
+      ecr_repository: 161615149547.dkr.ecr.us-east-1.amazonaws.com/bedrock-agentcore-a2a_arc_claimvalidation
+      ecr_auto_create: false
+      s3_path: null
+      s3_auto_create: false
+      network_configuration:
+        network_mode: PUBLIC
+        network_mode_config: null
+      protocol_configuration:
+        server_protocol: A2A
+      observability:
+        enabled: true
+      lifecycle_configuration:
+        idle_runtime_session_timeout: null
+        max_lifetime: null
+    bedrock_agentcore:
+      agent_id: A2A_ARC_claimvalidation-2ZSF5u2X4P
+      agent_arn: arn:aws:bedrock-agentcore:us-east-1:161615149547:runtime/A2A_ARC_claimvalidation-2ZSF5u2X4P
+      agent_session_id: null
+    codebuild:
+      project_name: bedrock-agentcore-a2a_arc_claimvalidation-builder
+      execution_role: arn:aws:iam::161615149547:role/AmazonBedrockAgentCoreSDKCodeBuild-us-east-1-4579a9c558
+      source_bucket: bedrock-agentcore-codebuild-sources-161615149547-us-east-1
+    memory:
+      mode: NO_MEMORY
+      memory_id: null
+      memory_arn: null
+      memory_name: null
+      event_expiry_days: 30
+      first_invoke_memory_check_done: false
+      was_created_by_toolkit: false
+    identity:
+      credential_providers: []
+      workload: null
+    aws_jwt:
+      enabled: false
+      audiences: []
+      signing_algorithm: ES384
+      issuer_url: null
+      duration_seconds: 300
+    authorizer_configuration:
+      customJWTAuthorizer:
+        allowedClients:
+        - n7vbptg0642gbr2o8gmv803df
+        discoveryUrl: https://cognito-idp.us-east-1.amazonaws.com/us-east-1_zU4oXKfnv/.well-known/openid-configuration
     request_header_configuration: null
     oauth_configuration: null
     api_key_env_var_name: null
